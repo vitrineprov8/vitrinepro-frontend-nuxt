@@ -39,6 +39,9 @@ function oauth(provider: 'google' | 'linkedin') {
     <h2>Bem-vindo de volta</h2>
     <p class="text-secondary">Entre para acessar seu painel</p>
 
+    <div v-if="route.query.reset === 'success'" class="login__banner login__banner--success" role="status">
+      Senha redefinida com sucesso. Entre com sua nova senha.
+    </div>
     <div v-if="formError" class="login__alert" role="alert">{{ formError }}</div>
 
     <form class="login__form" @submit.prevent="submit">
@@ -70,13 +73,12 @@ function oauth(provider: 'google' | 'linkedin') {
   background: var(--red-100); color: var(--red-500);
   border-radius: var(--radius-input); font-size: var(--text-14);
 }
+.login__banner--success {
+  margin-top: var(--sp-4); padding: var(--sp-3) var(--sp-4);
+  background: var(--brand-100); color: var(--brand-700);
+  border-radius: var(--radius-input); font-size: var(--text-14);
+}
 .login__form { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-6); }
 .login__forgot { display: block; text-align: right; font-size: var(--text-13); margin-top: var(--sp-1); }
 .login__divider {
-  display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-6) 0;
-  color: var(--ink-500); font-size: var(--text-13);
-}
-.login__divider::before, .login__divider::after { content: ''; flex: 1; height: 1px; background: var(--ink-300); }
-.login__oauth { display: flex; flex-direction: column; gap: var(--sp-3); }
-.login__signup { margin-top: var(--sp-6); text-align: center; font-size: var(--text-14); }
-</style>
+  display: flex; align-items: c

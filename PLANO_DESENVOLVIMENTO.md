@@ -18,8 +18,8 @@
 ## FASE 1 — Público + Auth (aquisição/SEO) — Backend ✅ quase todo
 | Tela | ID | Backend |
 |---|---|---|
-- [ ] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ❌ B1)
-- [ ] Recuperar/redefinir senha | T14/T15 | ❌ B2 (não existe reset por e-mail)
+- [x] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ❌ B1)
+- [x] Recuperar/redefinir senha | T14/T15 | ❌ B2 (mock dev em `auth.forgotPassword`/`resetPassword`; trocar quando B14+B2 existirem)
 - [ ] Home completa (prova social, depoimentos, carrossel) | T01 | 🟡 contadores ❌ B12
 - [ ] /vagas + /vagas/[segmento] + filtros | T05 | ✅ `/vagas`, `/vagas/radar`
 - [ ] /vaga/[slug] + Modal Candidatura | T06 | ✅ apply; bloco fee ❌ B4
@@ -92,5 +92,4 @@
 
 ## Dívidas / Notas
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
-- Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
-- OAuth callback: criar página `/auth/callback`
+- Decidir nome/marca final (placeholder HUNTRIA; logo wordma

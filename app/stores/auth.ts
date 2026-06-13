@@ -78,5 +78,6 @@ export const useAuthStore = defineStore('auth', () => {
     if (user.value) user.value.activeContextTeamId = teamId
   }
 
-  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, register, logout, setActiveContext }
-})
+  /**
+   * TODO(backend B2): `POST /auth/forgot-password` não existe ainda (sem módulo de e-mail, B14).
+   * Resposta dev
