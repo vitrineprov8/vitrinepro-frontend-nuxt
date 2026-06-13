@@ -1,0 +1,70 @@
+/* ============================================================
+   HUNTRIA Design Tokens — fonte: design-spec/00_MASTER_DESIGN_SYSTEM.md
+   NUNCA usar valores hardcoded nos componentes; sempre var(--*)
+   ============================================================ */
+:root {
+  /* Marca */
+  --brand-600: #0E9F6E; /* Verde Placement — ação primária, dinheiro, sucesso */
+  --brand-700: #057A55; /* hover primário */
+  --brand-100: #DEF7EC;
+  --ink-900: #0B1220;   /* sidebar, headings, dark surfaces */
+  --ink-700: #1F2A44;
+  --ink-500: #475569;   /* texto secundário */
+  --ink-300: #CBD5E1;   /* bordas */
+  --ink-100: #F1F5F9;   /* fundo do app */
+  --white: #FFFFFF;
+
+  /* Acentos funcionais */
+  --amber-500: #F59E0B;
+  --amber-100: #FEF3C7;
+  --red-500: #E02424;
+  --red-100: #FDE8E8;
+  --blue-500: #3F83F8;
+  --blue-100: #E1EFFE;
+  --purple-500: #7E3AF2; /* persona Consultoria */
+  --purple-100: #EDEBFE;
+
+  /* Semânticas */
+  --success: var(--brand-600);
+  --warning: var(--amber-500);
+  --danger: var(--red-500);
+  --info: var(--blue-500);
+
+  /* Tipografia */
+  --font-display: 'Sora', sans-serif;
+  --font-ui: 'Inter', sans-serif;
+  --text-12: 12px; --text-13: 13px; --text-14: 14px; --text-16: 16px;
+  --text-18: 18px; --text-22: 22px; --text-28: 28px; --text-36: 36px; --text-48: 48px;
+
+  /* Espaçamento (grid 8px) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px; --sp-16: 64px;
+
+  /* Raio */
+  --radius-input: 8px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --shadow-md: 0 4px 12px rgba(11, 18, 32, 0.10);
+  --shadow-lg: 0 12px 32px rgba(11, 18, 32, 0.18);
+
+  /* Layout */
+  --container-app: 1320px;
+  --sidebar-w: 240px;
+  --sidebar-w-collapsed: 64px;
+  --topbar-h: 64px;
+
+  /* Transições */
+  --t-fast: 150ms ease-out;
+  --t-overlay: 250ms ease-out;
+
+  /* Foco acessível */
+  --focus-ring: 0 0 0 2px var(--white), 0 0 0 4px var(--blue-500);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t-overlay: 0ms; }
+}

@@ -1,0 +1,49 @@
+/* Reset + estilos base — HUNTRIA */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--text-14);
+  line-height: 1.5;
+  color: var(--ink-900);
+  background: var(--ink-100);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.2; font-weight: 600; }
+h1 { font-size: var(--text-36); }
+h2 { font-size: var(--text-28); }
+h3 { font-size: var(--text-22); }
+h4 { font-size: var(--text-18); }
+
+a { color: var(--blue-500); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img { max-width: 100%; display: block; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; font-size: var(--text-14); }
+
+:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+
+/* Números tabulares para KPIs e dinheiro */
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Utilitários mínimos */
+.container { max-width: var(--container-app); margin-inline: auto; padding-inline: var(--sp-6); }
+.text-secondary { color: var(--ink-500); }
+.text-danger { color: var(--red-500); }
+.text-success { color: var(--brand-600); }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Skeleton padrão (00 §3.11) */
+.skeleton {
+  background: linear-gradient(90deg, var(--ink-100) 25%, #E2E8F0 50%, var(--ink-100) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.4s infinite;
+  border-radius: var(--radius-input);
+}
+@keyframes skeleton-wave { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
