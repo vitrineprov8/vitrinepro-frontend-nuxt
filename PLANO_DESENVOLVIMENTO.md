@@ -13,7 +13,7 @@
 - [x] Páginas de referência: Home T01 (parcial), Login T12
 - [x] `npm install` + `npm run dev` validados localmente
 - [x] Completar UI kit: Select, Multi-select chips, Datepicker, campo moeda/telefone, Tabs, Stepper, Tabela, EmptyState, ConfirmDialog, Pagination, Avatar, KPI Card
-- [ ] Git init + primeiro commit + deploy preview (Vercel)
+- [x] Git init + primeiro commit (deploy preview Vercel: pendente — push para o remoto)
 
 ## FASE 1 — Público + Auth (aquisição/SEO) — Backend ✅ quase todo
 | Tela | ID | Backend |
@@ -93,4 +93,4 @@
 ## Dívidas / Notas
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
 - Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
-- OAuth callback: criar página `/auth/callback` lendo `?token=` (padrão v1).
+- OAuth callback: criar página `/auth/callback`
