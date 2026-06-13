@@ -92,4 +92,5 @@
 
 ## Dívidas / Notas
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
-- Decidir nome/marca final (placeholder HUNTRIA; logo wordma
+- Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
+- Páginas pendentes referenciadas (T16 convite, T17 verificação e-mail, T18 utilitárias, /app/escolher-perfil de T-C00) ainda não existem — links já apontam para essas rotas.

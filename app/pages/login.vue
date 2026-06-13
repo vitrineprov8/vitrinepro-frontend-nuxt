@@ -81,4 +81,10 @@ function oauth(provider: 'google' | 'linkedin') {
 .login__form { display: flex; flex-direction: column; gap: var(--sp-4); margin-top: var(--sp-6); }
 .login__forgot { display: block; text-align: right; font-size: var(--text-13); margin-top: var(--sp-1); }
 .login__divider {
-  display: flex; align-items: c
+  display: flex; align-items: center; gap: var(--sp-3); margin: var(--sp-6) 0;
+  color: var(--ink-500); font-size: var(--text-13);
+}
+.login__divider::before, .login__divider::after { content: ''; flex: 1; height: 1px; background: var(--ink-300); }
+.login__oauth { display: flex; flex-direction: column; gap: var(--sp-3); }
+.login__signup { margin-top: var(--sp-6); text-align: center; font-size: var(--text-14); }
+</style>
