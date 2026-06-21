@@ -31,6 +31,10 @@ export default defineNuxtConfig({
       environment: process.env.NUXT_PUBLIC_ENVIRONMENT || 'development',
       googleClientId: process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID || '',
       linkedinClientId: process.env.NUXT_PUBLIC_LINKEDIN_CLIENT_ID || '',
+      // OAuth por provedor. Google ativo (credenciais configuradas no backend).
+      // LinkedIn desativado por enquanto — reativar com NUXT_PUBLIC_LINKEDIN_AUTH_ENABLED=true.
+      googleAuthEnabled: process.env.NUXT_PUBLIC_GOOGLE_AUTH_ENABLED !== 'false',
+      linkedinAuthEnabled: process.env.NUXT_PUBLIC_LINKEDIN_AUTH_ENABLED === 'true',
     },
   },
 

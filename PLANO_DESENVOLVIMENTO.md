@@ -20,17 +20,17 @@
 |---|---|---|
 - [x] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ❌ B1)
 - [x] Recuperar/redefinir senha | T14/T15 | ❌ B2 (mock dev em `auth.forgotPassword`/`resetPassword`; trocar quando B14+B2 existirem)
-- [ ] Home completa (prova social, depoimentos, carrossel) | T01 | 🟡 contadores ❌ B12
-- [ ] /vagas + /vagas/[segmento] + filtros | T05 | ✅ `/vagas`, `/vagas/radar`
-- [ ] /vaga/[slug] + Modal Candidatura | T06 | ✅ apply; bloco fee ❌ B4
-- [ ] /precos | T04 | ✅ `/plans`
-- [ ] /para-empresas (calculadora fee), /para-candidatos | T02/T03 | —
-- [ ] Perfil público candidato | T09 | ✅ `/profile/:username`
+- [x] Home completa (prova social, depoimentos, carrossel) | T01 | 🟡 carrossel real `/vagas` + contadores reais `/stats/home` (B12 parcial); fees/placements/hunters ainda mock
+- [x] /vagas + /vagas/[segmento] + filtros | T05 | ✅ `/vagas/radar` (q, segmento, cidade, tipo, modo, salário, ordem recent/relevance). Falta backend: order "maior salário/fee" e filtro fee (fee proxy=allowHunters no front) → B4
+- [x] /vaga/[slug] + Modal Candidatura | T06 | ✅ apply (409/400/403), salvar, compartilhar, semelhantes, SEO JobPosting; backend: `findBySlugPublic` agora carrega `company`. Falta: valor do fee R$ + "Quero esta vaga" drawer T-H07 (B4); bloco fee mostra só "aceita hunters"
+- [x] /precos | T04 | ✅ `/plans` (toggle mensal/anual, 4 cards, marketplace 25%, tabela comparativa, FAQ). CTA → /cadastro?plan=...&redirect=checkout (checkout = M2, pendente)
+- [x] /para-empresas (calculadora fee), /para-candidatos | T02/T03 | — (marketing puro, calculadora client-side; sem backend)
+- [x] Perfil público candidato | T09 | ✅ `/profile/:username` (+ portfolio/education/cv públicos; tabs Portfólio/Sobre/Formação; 404 oculto/empresa). Nota: banner "perfil oculto" p/ dono não dá (endpoint 404a oculto sem auth)
 - [ ] /hunters + /hunter/[username] | T07/T08 | ❌ B5 (perfil/diretório hunter)
 - [ ] /empresa/[slug] | T10 | ❌ B6
-- [ ] /processo/[token] | T11 | ✅ `/public/processo/:token`
+- [x] /processo/[token] | T11 | ✅ `/public/processo/:token` (layout limpo, etapa atual, score, notas, timeline; 410 front). Nota: snapshot não traz empresa nem expiresAt (footer sem "válido até"); backend responde 404 p/ expirado/revogado
 - [ ] /convite/[token] | T16 | 🟡 aceite existe; token por URL ❌ B7
-- [ ] 404/410 com tombstones | T18 | ✅ `/seo/*`
+- [x] 404/410 com tombstones | T18 | ✅ `/seo/*` (error.vue 404+410; tombstone em vaga/perfil → 410/301; /termos /privacidade /cookies /ajuda; banner de cookies). Textos legais = placeholder
 
 ## FASE 2 — Workspace Hunter (núcleo do produto)
 - [ ] Escolher perfil + onboarding hunter | T-C00/T-H01 | ❌ B1 (persona), verificação ❌ B8
@@ -80,7 +80,7 @@
 | **B9** | **Placements** | Entidade placement (salário final, fee, split 75/25, garantia 60/90d), confirmação bilateral + auto-confirm 7d, estados P3, disputa, estorno/reposição. | 4 |
 | **B10** | Avaliações de hunter | `reviews` (1–5 + comentário, 1 por placement, imutável — RN-NOVA-07), agregadas no perfil B5. | 3 |
 | **B11** | **Pagamentos reais** | Trocar mock `POST /subscriptions/:id/confirm` por gateway com webhook (Asaas ou Pagar.me — ambos têm split nativo p/ fee do hunter). Faturas de fee, Pix/cartão/boleto, inadimplência bloqueia publish. | 4 |
-| **B12** | Agregações/KPIs | Endpoints de dashboard (hunter: ganhos/mês; consultoria: pipeline overview, atividade; admin: GMV/MRR; home: contadores públicos). | 2–5 |
+| **B12** | Agregações/KPIs | Endpoints de dashboard (hunter: ganhos/mês; consultoria: pipeline overview, atividade; admin: GMV/MRR; home: contadores públicos). 🟡 **home feito:** `GET /stats/home` (openVagas, professionals, companies) em `src/stats/`. Falta: dashboards hunter/consultoria/admin. | 2–5 |
 | **B13** | Notificações | Tabela `notifications` + endpoints (sino), preferências por evento; sessões ativas + export LGPD. | 3–5 |
 | **B14** | **E-mail transacional** | NÃO EXISTE módulo de e-mail. Resend + templates (welcome, reset, convite, submissão, etapa, placement, fatura). Pré-requisito de B2/B3/B7. | 1 (primeiro!) |
 | B15 | Delegação de time em candidaturas | `listByVaga/updateStatus/notas` hoje exigem `createdById` — abrir para OWNER/MANAGER do time (dívida já documentada). | 2 |

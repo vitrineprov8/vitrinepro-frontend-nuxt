@@ -29,6 +29,9 @@ async function submit() {
 }
 
 const config = useRuntimeConfig()
+const googleAuthEnabled = computed(() => config.public.googleAuthEnabled)
+const linkedinAuthEnabled = computed(() => config.public.linkedinAuthEnabled)
+const oauthEnabled = computed(() => googleAuthEnabled.value || linkedinAuthEnabled.value)
 function oauth(provider: 'google' | 'linkedin') {
   window.location.href = `${config.public.backendUrl}/auth/${provider}`
 }
@@ -53,12 +56,14 @@ function oauth(provider: 'google' | 'linkedin') {
       <UiButton type="submit" block :loading="loading">Entrar</UiButton>
     </form>
 
-    <div class="login__divider"><span>ou</span></div>
+    <template v-if="oauthEnabled">
+      <div class="login__divider"><span>ou</span></div>
 
-    <div class="login__oauth">
-      <UiButton variant="secondary" block @click="oauth('google')">Continuar com Google</UiButton>
-      <UiButton variant="secondary" block @click="oauth('linkedin')">Continuar com LinkedIn</UiButton>
-    </div>
+      <div class="login__oauth">
+        <UiButton v-if="googleAuthEnabled" variant="secondary" block @click="oauth('google')">Continuar com Google</UiButton>
+        <UiButton v-if="linkedinAuthEnabled" variant="secondary" block @click="oauth('linkedin')">Continuar com LinkedIn</UiButton>
+      </div>
+    </template>
 
     <p class="login__signup">
       Não tem conta? <NuxtLink to="/cadastro"><strong>Criar conta grátis</strong></NuxtLink>

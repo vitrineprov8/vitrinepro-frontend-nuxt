@@ -6,6 +6,9 @@ useSeoMeta({ title: 'Criar conta' })
 const route = useRoute()
 const auth = useAuthStore()
 const config = useRuntimeConfig()
+const googleAuthEnabled = computed(() => config.public.googleAuthEnabled)
+const linkedinAuthEnabled = computed(() => config.public.linkedinAuthEnabled)
+const oauthEnabled = computed(() => googleAuthEnabled.value || linkedinAuthEnabled.value)
 
 type Persona = 'hunter' | 'empresa' | 'candidato'
 
@@ -135,8 +138,13 @@ async function submit() {
     if (err.status === 400 && /e-?mail/i.test(err.message ?? '')) {
       emailExists.value = true
     }
+    else if (!err.status) {
+      // status 0 = falha de rede: backend provavelmente fora do ar
+      formError.value = `Não foi possível conectar ao servidor (${config.public.backendUrl}). Confira se o backend está rodando.`
+    }
     else {
-      formError.value = 'Não foi possível criar sua conta. Tente novamente.'
+      // mostra a mensagem real do servidor para facilitar o diagnóstico
+      formError.value = err.message || 'Não foi possível criar sua conta. Tente novamente.'
     }
   }
   finally {
@@ -157,7 +165,7 @@ function oauth(provider: 'google' | 'linkedin') {
     <UiStepper :steps="stepperItems" :current="step" class="cadastro__stepper" />
 
     <template v-if="step === 0">
-      <h2>Como você quer usar o HUNTRIA?</h2>
+      <h2>Como você quer usar o VitrinePro?</h2>
       <p class="text-secondary">Você pode mudar isso depois nas configurações da conta.</p>
 
       <div class="cadastro__personas">
@@ -184,11 +192,13 @@ function oauth(provider: 'google' | 'linkedin') {
       <h2>{{ personaTitles[persona] }}</h2>
       <p class="text-secondary">Leva menos de um minuto.</p>
 
-      <div class="cadastro__oauth">
-        <UiButton variant="secondary" block @click="oauth('google')">Continuar com Google</UiButton>
-        <UiButton variant="secondary" block @click="oauth('linkedin')">Continuar com LinkedIn</UiButton>
-      </div>
-      <div class="cadastro__divider"><span>ou com e-mail</span></div>
+      <template v-if="oauthEnabled">
+        <div class="cadastro__oauth">
+          <UiButton v-if="googleAuthEnabled" variant="secondary" block @click="oauth('google')">Continuar com Google</UiButton>
+          <UiButton v-if="linkedinAuthEnabled" variant="secondary" block @click="oauth('linkedin')">Continuar com LinkedIn</UiButton>
+        </div>
+        <div class="cadastro__divider"><span>ou com e-mail</span></div>
+      </template>
 
       <div v-if="formError" class="cadastro__alert" role="alert">{{ formError }}</div>
       <div v-if="emailExists" class="cadastro__alert" role="alert">
