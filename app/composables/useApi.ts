@@ -9,7 +9,11 @@ export interface ApiError {
 
 export function useApi() {
   const config = useRuntimeConfig()
-  const token = useCookie<string | null>('vp_token', { maxAge: 60 * 60 * 24 * 30 })
+  const token = useCookie<string | null>('vp_token', {
+    maxAge: 60 * 60 * 24 * 30,
+    path: '/',
+    sameSite: 'lax',
+  })
 
   async function request<T>(path: string, opts: Parameters<typeof $fetch>[1] = {}): Promise<T> {
     try {

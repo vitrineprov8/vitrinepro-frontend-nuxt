@@ -34,11 +34,11 @@
 
 ## FASE 2 — Workspace Hunter (núcleo do produto)
 - [ ] Escolher perfil + onboarding hunter | T-C00/T-H01 | ❌ B1 (persona), verificação ❌ B8
-- [ ] Início "Minha mesa" | T-H02 | 🟡 agregações ❌ B12
-- [ ] Minhas Vagas + Editor + fluxo Publicar (slots, Modal Upgrade) | T-H03/T-H04 | ✅ ledger completo (`/vagas/me/usage`, `publish`, PLAN_LIMIT_REACHED)
-- [ ] Pipeline kanban + drawer candidato + notas/score/histórico | T-H05 | ✅ pipeline-templates + applications
-- [ ] Modal Configurar Etapas | T-H06 | ✅
-- [ ] Compartilhar processo + PDF | T-H10 | ✅ process-share
+- [x] Início "Minha mesa" | T-H02 | 🟡 slots reais (`/vagas/me/usage`); KPIs/mesa mock (B12)
+- [x] Minhas Vagas + Editor + fluxo Publicar (slots, Modal Upgrade) | T-H03/T-H04 | ✅ `/vagas/me`, create/patch, `publish`, PLAN_LIMIT_REACHED→Modal Upgrade, autosave. Fee/maxHunters/exclusividade no editor = B4 (fora)
+- [x] Pipeline kanban + drawer candidato + notas/score/histórico | T-H05 | ✅ kanban drag&drop (PATCH status), drawer (mover/rejeitar/nota etapa/histórico), estados DRAFT/CLOSED. Nota: listByVaga não retorna stageNotes/score → drawer escreve sem pré-carregar; origem sempre "Direta" (B3)
+- [x] Modal Configurar Etapas | T-H06 | ✅ PATCH /me/pipeline-template (renomear, cor, reordenar, add/remover; rejected fixo)
+- [x] Compartilhar processo + PDF | T-H10 | ✅ ShareProcessModal (gerar/copiar/revogar link público) + Baixar PDF, no drawer do candidato. Nota: sem endpoint de listagem → lista só os links da sessão; URL montada com frontendUrl (backend retorna domínio prod); QR pendente (sem lib)
 - [ ] Marketplace de vagas + termos | T-H07 | 🟡 hunter-interests existe; fee/termos/limite submissões ❌ B4
 - [ ] **Meus Candidatos + Submeter candidato (3 passos)** | T-H08 | ❌ B3 — O GAP Nº 1
 - [ ] Placements & Ganhos | T-H09 | ❌ B9

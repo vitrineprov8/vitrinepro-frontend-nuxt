@@ -13,7 +13,8 @@ onMounted(async () => {
   if (u.isCompany) return navigateTo('/app/empresa')
   const last = localStorage.getItem('vp_last_workspace')
   if (last) return navigateTo(last)
-  return navigateTo('/app/escolher-perfil')
+  // TODO(B1): sem persona no backend, default para o workspace hunter.
+  return navigateTo('/app/hunter')
 })
 </script>
 

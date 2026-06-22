@@ -5,7 +5,6 @@ definePageMeta({ layout: 'auth' })
 useSeoMeta({ title: 'Entrando...', robots: 'noindex' })
 
 const route = useRoute()
-const api = useApi()
 const auth = useAuthStore()
 const error = ref(false)
 
@@ -15,9 +14,8 @@ onMounted(async () => {
     error.value = true
     return
   }
-  api.token.value = token
   try {
-    await auth.fetchMe()
+    await auth.loginWithToken(token)
     if (!auth.user) throw new Error('no-user')
 
     // Onboarding por persona escolhida no /cadastro (ver PLANO §BACKEND B1 —
@@ -31,7 +29,7 @@ onMounted(async () => {
     navigateTo((route.query.redirect as string) || '/app')
   }
   catch {
-    api.token.value = null
+    useCookie('vp_token', { path: '/' }).value = null
     error.value = true
   }
 })

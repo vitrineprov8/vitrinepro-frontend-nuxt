@@ -57,6 +57,14 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchMe()
   }
 
+  /** Aplica um token vindo do OAuth (callback) e carrega o usuário.
+   *  Usa a MESMA instância de api do store para o token não ficar dessincronizado. */
+  async function loginWithToken(token: string) {
+    api.token.value = token
+    await fetchMe()
+    return user.value
+  }
+
   async function register(payload: {
     email: string, password: string, firstName: string, lastName: string
     isCompany?: boolean, companyName?: string, companyIndustry?: string
@@ -105,5 +113,5 @@ export const useAuthStore = defineStore('auth', () => {
     await api.post(`/auth/reset-password/${token}`, { password })
   }
 
-  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, register, logout, setActiveContext, forgotPassword, resetPassword }
+  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword }
 })
