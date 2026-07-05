@@ -18,7 +18,7 @@
 ## FASE 1 — Público + Auth (aquisição/SEO) — Backend ✅ quase todo
 | Tela | ID | Backend |
 |---|---|---|
-- [x] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ❌ B1)
+- [x] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ✅ B1 — persiste em `User.personas`)
 - [x] Recuperar/redefinir senha | T14/T15 | ✅ B2 `POST /auth/forgot-password` + `POST /auth/reset-password/:token` (mock removido de `auth.forgotPassword`/`resetPassword`)
 - [x] Home completa (prova social, depoimentos, carrossel) | T01 | 🟡 carrossel real `/vagas` + contadores reais `/stats/home` (B12 parcial); fees/placements/hunters ainda mock
 - [x] /vagas + /vagas/[segmento] + filtros | T05 | ✅ `/vagas/radar` (q, segmento, cidade, tipo, modo, salário, ordem recent/relevance). Falta backend: order "maior salário/fee" e filtro fee (fee proxy=allowHunters no front) → B4
@@ -33,7 +33,7 @@
 - [x] 404/410 com tombstones | T18 | ✅ `/seo/*` (error.vue 404+410; tombstone em vaga/perfil → 410/301; /termos /privacidade /cookies /ajuda; banner de cookies). Textos legais = placeholder
 
 ## FASE 2 — Workspace Hunter (núcleo do produto)
-- [ ] Escolher perfil + onboarding hunter | T-C00/T-H01 | ❌ B1 (persona), verificação ❌ B8
+- [x] Escolher perfil + onboarding hunter | T-C00/T-H01 | ✅ B1 (persona persistida em `User.personas`, ativável via `PATCH /profile/me/personas`); verificação de hunter ainda ❌ B8
 - [x] Início "Minha mesa" | T-H02 | 🟡 slots reais (`/vagas/me/usage`); KPIs/mesa mock (B12)
 - [x] Minhas Vagas + Editor + fluxo Publicar (slots, Modal Upgrade) | T-H03/T-H04 | ✅ `/vagas/me`, create/patch, `publish`, PLAN_LIMIT_REACHED→Modal Upgrade, autosave. Fee/maxHunters/exclusividade no editor = B4 (fora)
 - [x] Pipeline kanban + drawer candidato + notas/score/histórico | T-H05 | ✅ kanban drag&drop (PATCH status), drawer (mover/rejeitar/nota etapa/histórico), estados DRAFT/CLOSED. Nota: listByVaga não retorna stageNotes/score → drawer escreve sem pré-carregar; origem sempre "Direta" (B3)
@@ -69,7 +69,7 @@
 
 | # | Gap | Descrição | Fase |
 |---|---|---|---|
-| **B1** | Persona/role de produto | Campo `personas: ['CANDIDATO','HUNTER','EMPRESA']` no User + endpoint para ativar persona (hoje só `isCompany`). | 1 |
+| ~~**B1**~~ ✅ | **Persona/role de produto** | **FEITO e validado E2E** (2026-07-06). Enum `UserPersona` (`CANDIDATO`/`HUNTER`/`EMPRESA`) + coluna `User.personas` (`simple-array`, migração `1749100000000-b1-user-personas` com backfill `EMPRESA`/`CANDIDATO` para contas existentes — **nota:** dev roda com `synchronize:true`, então a coluna já existia via sync antes da migração rodar; migração ainda precisa ser aplicada em prod/CI). `POST /auth/register` aceita `persona?: 'CANDIDATO'\|'HUNTER'` (empresa sempre `[EMPRESA]`; hunter acumula `[CANDIDATO,HUNTER]`); `login`/`register` retornam `personas` no `user`. Novo `PATCH /profile/me/personas` (`ActivatePersonaDto`, `JwtAuthGuard`) ativa CANDIDATO/HUNTER de forma idempotente; bloqueia EMPRESA (403) e bloqueia contas `isCompany` de ativarem outras personas (403). Front: `auth.ts` (`User.personas`, `register(persona)`, novo `activatePersona()`), `cadastro.vue` envia a persona escolhida no registro por e-mail, `auth/callback.vue` chama `activatePersona` após login OAuth (a persona só pode ser persistida depois que a conta OAuth já existe). Validado no Chrome com a conta real `testeia@getnada.com`: ativação HUNTER, acumulação CANDIDATO+HUNTER, idempotência, e os dois caminhos 403 (hunter tentando EMPRESA; conta empresa tentando HUNTER). **Dívida encontrada (pré-existente, não é regressão do B1):** `GET /profile/me`, `PATCH /profile` e `PATCH /profile/me/personas` retornam a entidade `User` crua, incluindo o hash de `password` — nenhum desses endpoints estava removendo campos sensíveis antes do B1; considerar como item de limpeza (B16 ou gap novo). | 1 |
 | ~~**B2**~~ ✅ | **Reset de senha** | **FEITO e validado E2E** (2026-07-05). `POST /auth/forgot-password` (resposta sempre genérica; contas OAuth sem senha não geram token) + `POST /auth/reset-password/:token` (token 1h, uso único, hex 24 bytes; 404 se não existe, 410 se expirado). Front `T14/T15` ligado (mock removido). E-mail real via B14 (`MailService.sendPasswordReset`). Andres recebeu o e-mail, redefiniu a senha da conta `testeia@getnada.com` de verdade e confirmou — fluxo completo ponta a ponta OK. | 1 |
 | ~~**B3**~~ ✅ | **Submissão de candidatos por hunter** | **FEITO (backend)** — módulo `hunter-candidates`: `hunter_candidates` (talent pool/CRM, candidato fantasma), consentimento LGPD por token (e-mail=**stub**, real depende de B14), `POST /vagas/:id/submissions` (limite 5/hunter + trava 90d — RN-NOVA-01/02), `source`/`submittedByHunterId`/`hunterCandidateId` na application. Migração `1748600000000`. Falta: e-mail real (B14) + upload de CV do candidato + front T-H08. | 2 |
 | **B4** | Marketplace/fee na vaga | Campos `feeAmount/feePercent`, `maxHunters`, `exclusivityDays` na Vaga; aceite de termos no hunter-interest; mascaramento de contato por etapa (RN-NOVA-03); limite de submissões. | 2 |
@@ -86,13 +86,15 @@
 | B15 | Delegação de time em candidaturas | `listByVaga/updateStatus/notas` hoje exigem `createdById` — abrir para OWNER/MANAGER do time (dívida já documentada). | 2 |
 | B16 | Limpeza | Remover campos de Serviços (isService etc.), PlanLimitGuard morto, enum deprecated; padronizar migrações (sem synchronize). | 0 |
 
-**Ordem recomendada no backend:** ~~B14 → B2/B7 → B6~~ ✅ → B1 → B3+B4 (núcleo) → B5+B8 → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo.
+**Ordem recomendada no backend:** ~~B14 → B2/B7 → B6 → B1~~ ✅ → B3+B4 (núcleo) → B5+B8 → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo.
 
 ---
 
 ## Dívidas / Notas
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
 - Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
+- **[B1, 2026-07-06] Migração `1749100000000-b1-user-personas` ainda não foi rodada** (`npm run migration:run`) — em dev a coluna `personas` já existe via `synchronize:true`, mas contas criadas antes do B1 ficam com `personas: null` até a migração rodar (backfill) ou até ativarem uma persona manualmente via `PATCH /profile/me/personas`. Rodar a migração antes de deploy em produção (lá `synchronize` é `false`).
+- **[B1, 2026-07-06] `password` (hash) vazando em respostas de perfil autenticado** — `GET /profile/me`, `PATCH /profile` e o novo `PATCH /profile/me/personas` retornam a entidade `User` sem remover campos sensíveis (diferente de `getPublicProfile`/`getPublicCompany`, que já filtram). Não é regressão do B1 (o padrão já existia em `getMyProfile`/`updateProfile`), mas foi descoberto durante a validação E2E do B1. Vale um gap de limpeza dedicado — adicionar `select:false` em `password` (com `addSelect` só onde precisa, ex.: login) ou strip explícito no controller/service.
 - Páginas pendentes referenciadas (T17 verificação e-mail, T18 utilitárias, /app/escolher-perfil de T-C00) ainda não existem — links já apontam para essas rotas. (T16 convite feita em 2026-07-05, ver B7.)
 - **`qa-test-accounts.json` não tem conta de plano TEAM/ENTERPRISE** — falta para validar B7 (convite de time) ponta a ponta. Próxima vez que Andres tiver uma, adicionar lá.
 - **B6 (2026-07-06): validado E2E completo.** Andres criou conta `isCompany` (`andresempresa@getnada.com`, username `andreshernandez9975`, empresa "ANDRES H TESTE" / tecnologia) e já estava logada no Chrome — `/empresa/andreshernandez9975` renderiza os dados reais e o estado vazio de vagas corretamente. Falta só testar a listagem `vagasAbertas` com uma vaga publicada de verdade (sem workspace Empresa ainda para isso).

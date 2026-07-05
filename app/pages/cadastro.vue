@@ -123,10 +123,13 @@ async function submit() {
       isCompany: persona.value === 'empresa',
       companyName: persona.value === 'empresa' ? companyName.value.trim() : undefined,
       companyIndustry: persona.value === 'empresa' ? (companyIndustry.value ?? undefined) : undefined,
+      // B1 — persona persistida no backend (User.personas); ignorada se isCompany=true
+      persona: persona.value === 'hunter' ? 'HUNTER' : persona.value === 'candidato' ? 'CANDIDATO' : undefined,
       // TODO(backend B1): CNPJ ainda não existe no DTO de /auth/register — capturado para uso futuro em faturas
     })
 
-    // TODO(backend B1): heurística local de persona até existir `personas` no User
+    // Workspace inicial pós-cadastro (navegação apenas — persona em si já
+    // foi persistida no backend via `auth.register`).
     if (persona.value && persona.value !== 'empresa') {
       localStorage.setItem('vp_last_workspace', `/app/${persona.value}`)
     }

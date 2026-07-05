@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 
 export type PlanTier = 'FREE' | 'RECRUITER' | 'TEAM' | 'ENTERPRISE'
 export type WorkspaceKind = 'candidato' | 'hunter' | 'consultoria' | 'empresa' | 'admin'
+/** B1 — persona/role de produto (backend `UserPersona`). */
+export type Persona = 'CANDIDATO' | 'HUNTER' | 'EMPRESA'
 
 export interface User {
   id: string
@@ -19,6 +21,8 @@ export interface User {
   companyName: string | null
   isVisible: boolean
   activeContextTeamId: string | null
+  /** B1 — personas ativas da conta; null/[] em contas antigas pré-migração. */
+  personas: Persona[] | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -68,10 +72,28 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(payload: {
     email: string, password: string, firstName: string, lastName: string
     isCompany?: boolean, companyName?: string, companyIndustry?: string
+    /** B1 — persona escolhida no passo 1 do /cadastro. Ignorada se isCompany=true. */
+    persona?: 'CANDIDATO' | 'HUNTER'
   }) {
     const res = await api.post<{ access_token: string }>('/auth/register', payload)
     api.token.value = res.access_token
     await fetchMe()
+  }
+
+  /**
+   * B1 — Ativa uma persona adicional (CANDIDATO/HUNTER) na conta já
+   * autenticada — usado no fluxo OAuth (persona é escolhida antes do
+   * redirect, mas só pode ser persistida depois que o usuário existe).
+   * Idempotente no backend; erros são engolidos (não bloqueia o login).
+   */
+  async function activatePersona(persona: 'CANDIDATO' | 'HUNTER') {
+    try {
+      const updated = await api.patch<User>('/profile/me/personas', { persona })
+      user.value = updated
+    }
+    catch {
+      // não crítico — o usuário pode ativar a persona depois manualmente
+    }
   }
 
   function logout() {
@@ -102,5 +124,5 @@ export const useAuthStore = defineStore('auth', () => {
     await api.post(`/auth/reset-password/${token}`, { password })
   }
 
-  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword }
+  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword, activatePersona }
 })

@@ -18,10 +18,12 @@ onMounted(async () => {
     await auth.loginWithToken(token)
     if (!auth.user) throw new Error('no-user')
 
-    // Onboarding por persona escolhida no /cadastro (ver PLANO §BACKEND B1 —
-    // hoje não há campo `personas` no backend; usamos o valor local como heurística)
+    // Onboarding por persona escolhida no /cadastro (signup via OAuth não
+    // passa por `auth.register`, então a persona só pode ser persistida
+    // agora que a conta já existe — B1: PATCH /profile/me/personas).
     const persona = localStorage.getItem('vp_persona_choice')
-    if (persona && !auth.user.isCompany) {
+    if (persona && !auth.user.isCompany && (persona === 'hunter' || persona === 'candidato')) {
+      await auth.activatePersona(persona === 'hunter' ? 'HUNTER' : 'CANDIDATO')
       localStorage.setItem('vp_last_workspace', `/app/${persona}`)
       localStorage.removeItem('vp_persona_choice')
     }
