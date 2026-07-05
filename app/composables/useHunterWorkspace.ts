@@ -1,5 +1,4 @@
 // Define a navegação do app shell (layout 'app') para o workspace do hunter.
-// Chamar no setup de cada página /app/hunter/*.
 export interface NavItem { label: string, to: string }
 
 export function useHunterWorkspace() {
@@ -9,6 +8,7 @@ export function useHunterWorkspace() {
   nav.value = [
     { label: 'Início', to: '/app/hunter' },
     { label: 'Minhas Vagas', to: '/app/hunter/vagas' },
+    { label: 'Meus Candidatos', to: '/app/hunter/candidatos' },
   ]
   label.value = 'Hunter'
 }

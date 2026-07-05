@@ -40,7 +40,7 @@
 - [x] Modal Configurar Etapas | T-H06 | ✅ PATCH /me/pipeline-template (renomear, cor, reordenar, add/remover; rejected fixo)
 - [x] Compartilhar processo + PDF | T-H10 | ✅ ShareProcessModal (gerar/copiar/revogar link público) + Baixar PDF, no drawer do candidato. Nota: sem endpoint de listagem → lista só os links da sessão; URL montada com frontendUrl (backend retorna domínio prod); QR pendente (sem lib)
 - [ ] Marketplace de vagas + termos | T-H07 | 🟡 hunter-interests existe; fee/termos/limite submissões ❌ B4
-- [ ] **Meus Candidatos + Submeter candidato (3 passos)** | T-H08 | ❌ B3 — O GAP Nº 1
+- [x] **Meus Candidatos + Submeter candidato (3 passos)** | T-H08 | 🟡 **backend + front v1 feitos**. Front: `/app/hunter/candidatos` (lista+busca+badge LGPD+drawer detalhe), `AddCandidateModal` (cadastrar fantasma), `SubmitCandidateModal` (stepper 3 passos, trata 400/403/409). Backend: módulo `hunter-candidates`, `POST /vagas/:id/submissions` (limite 5/hunter + trava 90d), migração `1748600000000`. **Faltam (v2):** aba "Buscar na VitrinePro" (dep. B13), upload de CV, tags/filtros, fee na vaga (B4), e-mail real (B14); seletor de vaga usa só as vagas próprias publicadas (marketplace = T-H07/B4)
 - [ ] Placements & Ganhos | T-H09 | ❌ B9
 - [ ] Perfil de hunter (edição) | T-H11 | ❌ B5
 
@@ -71,7 +71,7 @@
 |---|---|---|---|
 | **B1** | Persona/role de produto | Campo `personas: ['CANDIDATO','HUNTER','EMPRESA']` no User + endpoint para ativar persona (hoje só `isCompany`). | 1 |
 | **B2** | Reset de senha | `POST /auth/forgot-password` + `POST /auth/reset-password/:token` (token 1h, anti-enumeração). Depende de B14. | 1 |
-| **B3** | **Submissão de candidatos por hunter** | Núcleo do negócio: `hunter_candidates` (talent pool/CRM, candidato fantasma), consentimento LGPD (token por e-mail), `POST /vagas/:id/submissions` (limite N por hunter, trava de duplicidade 90d — RN-NOVA-01/02), origem na application (`source`, `submittedByHunterId`). | 2 |
+| ~~**B3**~~ ✅ | **Submissão de candidatos por hunter** | **FEITO (backend)** — módulo `hunter-candidates`: `hunter_candidates` (talent pool/CRM, candidato fantasma), consentimento LGPD por token (e-mail=**stub**, real depende de B14), `POST /vagas/:id/submissions` (limite 5/hunter + trava 90d — RN-NOVA-01/02), `source`/`submittedByHunterId`/`hunterCandidateId` na application. Migração `1748600000000`. Falta: e-mail real (B14) + upload de CV do candidato + front T-H08. | 2 |
 | **B4** | Marketplace/fee na vaga | Campos `feeAmount/feePercent`, `maxHunters`, `exclusivityDays` na Vaga; aceite de termos no hunter-interest; mascaramento de contato por etapa (RN-NOVA-03); limite de submissões. | 2 |
 | **B5** | Perfil público de hunter | Entidade/endpoints: headline, especialidades, métricas agregadas, diretório `/hunters` (filtros), slug público. | 2 |
 | **B6** | Página pública de empresa | `GET /empresas/:slug` (conta isCompany) + vagas abertas. Hoje empresa é 404 público. | 1 |
@@ -82,7 +82,7 @@
 | **B11** | **Pagamentos reais** | Trocar mock `POST /subscriptions/:id/confirm` por gateway com webhook (Asaas ou Pagar.me — ambos têm split nativo p/ fee do hunter). Faturas de fee, Pix/cartão/boleto, inadimplência bloqueia publish. | 4 |
 | **B12** | Agregações/KPIs | Endpoints de dashboard (hunter: ganhos/mês; consultoria: pipeline overview, atividade; admin: GMV/MRR; home: contadores públicos). 🟡 **home feito:** `GET /stats/home` (openVagas, professionals, companies) em `src/stats/`. Falta: dashboards hunter/consultoria/admin. | 2–5 |
 | **B13** | Notificações | Tabela `notifications` + endpoints (sino), preferências por evento; sessões ativas + export LGPD. | 3–5 |
-| **B14** | **E-mail transacional** | NÃO EXISTE módulo de e-mail. Resend + templates (welcome, reset, convite, submissão, etapa, placement, fatura). Pré-requisito de B2/B3/B7. | 1 (primeiro!) |
+| ~~**B14**~~ ✅ | **E-mail transacional** | **FEITO e validado E2E.** Módulo `mail` (Resend via `fetch`, sem dep.; modo STUB sem key). Consentimento de B3 envia de verdade → página pública `/consentimento/[token]`. **Domínio `send.v8pro.com.br` verificado no Resend** e `MAIL_FROM=no-reply@send.v8pro.com.br` — e-mail entregue e renderizado OK numa caixa real (getnada) em 2026-07-05. **Falta (incremental):** ligar B2 (reset) e B7 (convite) ao MailService; templates de submissão/etapa/placement/fatura. | 1 |
 | B15 | Delegação de time em candidaturas | `listByVaga/updateStatus/notas` hoje exigem `createdById` — abrir para OWNER/MANAGER do time (dívida já documentada). | 2 |
 | B16 | Limpeza | Remover campos de Serviços (isService etc.), PlanLimitGuard morto, enum deprecated; padronizar migrações (sem synchronize). | 0 |
 
