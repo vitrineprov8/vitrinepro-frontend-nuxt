@@ -41,6 +41,20 @@ export interface VagaCompany {
   logoUrl: string | null
 }
 
+/** B6 — projeção enxuta de GET /empresas/:slug (vagasAbertas). Não é o Vaga completo. */
+export interface CompanyVagaSummary {
+  id: string
+  slug: string
+  title: string
+  location: string | null
+  type: VagaType | null
+  workMode: VagaWorkMode | null
+  segment: VagaSegment | null
+  salaryMin: number | string | null
+  salaryMax: number | string | null
+  publishedAt: string | null
+}
+
 // Currículo do candidato (GET /cv)
 export interface CV {
   id: string
