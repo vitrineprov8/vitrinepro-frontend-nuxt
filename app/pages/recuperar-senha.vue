@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // T14 — Recuperar senha (design-spec/01)
-// Resposta sempre genérica (anti-enumeração) — ver auth.forgotPassword (TODO backend B2)
+// Resposta sempre genérica (anti-enumeração) — ver auth.forgotPassword (backend B2 ✅)
 definePageMeta({ layout: 'auth' })
 useSeoMeta({ title: 'Recuperar senha' })
 

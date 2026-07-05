@@ -19,7 +19,7 @@
 | Tela | ID | Backend |
 |---|---|---|
 - [x] Cadastro 2 passos (persona) | T13 | ✅ `/auth/register` (isCompany ok; persona hunter ❌ B1)
-- [x] Recuperar/redefinir senha | T14/T15 | ❌ B2 (mock dev em `auth.forgotPassword`/`resetPassword`; trocar quando B14+B2 existirem)
+- [x] Recuperar/redefinir senha | T14/T15 | ✅ B2 `POST /auth/forgot-password` + `POST /auth/reset-password/:token` (mock removido de `auth.forgotPassword`/`resetPassword`)
 - [x] Home completa (prova social, depoimentos, carrossel) | T01 | 🟡 carrossel real `/vagas` + contadores reais `/stats/home` (B12 parcial); fees/placements/hunters ainda mock
 - [x] /vagas + /vagas/[segmento] + filtros | T05 | ✅ `/vagas/radar` (q, segmento, cidade, tipo, modo, salário, ordem recent/relevance). Falta backend: order "maior salário/fee" e filtro fee (fee proxy=allowHunters no front) → B4
 - [x] /vaga/[slug] + Modal Candidatura | T06 | ✅ apply (409/400/403), salvar, compartilhar, semelhantes, SEO JobPosting; backend: `findBySlugPublic` agora carrega `company`. Falta: valor do fee R$ + "Quero esta vaga" drawer T-H07 (B4); bloco fee mostra só "aceita hunters"
@@ -29,7 +29,7 @@
 - [ ] /hunters + /hunter/[username] | T07/T08 | ❌ B5 (perfil/diretório hunter)
 - [ ] /empresa/[slug] | T10 | ❌ B6
 - [x] /processo/[token] | T11 | ✅ `/public/processo/:token` (layout limpo, etapa atual, score, notas, timeline; 410 front). Nota: snapshot não traz empresa nem expiresAt (footer sem "válido até"); backend responde 404 p/ expirado/revogado
-- [ ] /convite/[token] | T16 | 🟡 aceite existe; token por URL ❌ B7
+- [x] /convite/[token] | T16 | ✅ B7 `GET /public/team-invite/:token` (sem auth) + `POST /team-invite/:token/accept` (com auth, e-mail deve bater); `POST /me/team/invite` agora gera `inviteToken` e envia e-mail real
 - [x] 404/410 com tombstones | T18 | ✅ `/seo/*` (error.vue 404+410; tombstone em vaga/perfil → 410/301; /termos /privacidade /cookies /ajuda; banner de cookies). Textos legais = placeholder
 
 ## FASE 2 — Workspace Hunter (núcleo do produto)
@@ -70,12 +70,12 @@
 | # | Gap | Descrição | Fase |
 |---|---|---|---|
 | **B1** | Persona/role de produto | Campo `personas: ['CANDIDATO','HUNTER','EMPRESA']` no User + endpoint para ativar persona (hoje só `isCompany`). | 1 |
-| **B2** | Reset de senha | `POST /auth/forgot-password` + `POST /auth/reset-password/:token` (token 1h, anti-enumeração). Depende de B14. | 1 |
+| ~~**B2**~~ ✅ | **Reset de senha** | **FEITO.** `POST /auth/forgot-password` (resposta sempre genérica; contas OAuth sem senha não geram token) + `POST /auth/reset-password/:token` (token 1h, uso único, hex 24 bytes; 404 se não existe, 410 se expirado). Front `T14/T15` ligado (mock removido). E-mail real via B14 (`MailService.sendPasswordReset`). **Falta**: validar digitação da nova senha ponta a ponta (Andres). | 1 |
 | ~~**B3**~~ ✅ | **Submissão de candidatos por hunter** | **FEITO (backend)** — módulo `hunter-candidates`: `hunter_candidates` (talent pool/CRM, candidato fantasma), consentimento LGPD por token (e-mail=**stub**, real depende de B14), `POST /vagas/:id/submissions` (limite 5/hunter + trava 90d — RN-NOVA-01/02), `source`/`submittedByHunterId`/`hunterCandidateId` na application. Migração `1748600000000`. Falta: e-mail real (B14) + upload de CV do candidato + front T-H08. | 2 |
 | **B4** | Marketplace/fee na vaga | Campos `feeAmount/feePercent`, `maxHunters`, `exclusivityDays` na Vaga; aceite de termos no hunter-interest; mascaramento de contato por etapa (RN-NOVA-03); limite de submissões. | 2 |
 | **B5** | Perfil público de hunter | Entidade/endpoints: headline, especialidades, métricas agregadas, diretório `/hunters` (filtros), slug público. | 2 |
 | **B6** | Página pública de empresa | `GET /empresas/:slug` (conta isCompany) + vagas abertas. Hoje empresa é 404 público. | 1 |
-| **B7** | Convite por token | TeamMember PENDING ganha `inviteToken` + e-mail com link `/convite/[token]` (hoje só aceita logado via listagem). Depende de B14. | 1 |
+| ~~**B7**~~ ✅ | **Convite por token** | **FEITO.** `TeamMember.inviteToken` (hex 24 bytes, `select:false`) gerado em `POST /me/team/invite`; e-mail real via B14 (`MailService.sendTeamInvite`) com link `/convite/[token]`. Rotas: `GET /public/team-invite/:token` (sem auth) + `POST /team-invite/:token/accept` (com auth; exige e-mail igual ao convite; token one-time). Fluxo antigo por `memberId` continua para quem já está logado. Front `pages/convite/[token].vue` feito. **Falta**: validar criação+aceite ponta a ponta com conta plano TEAM/ENTERPRISE (não existe em `qa-test-accounts.json`). | 1 |
 | **B8** | Verificação de hunter | Upload docs, status (PENDING/APPROVED/REJECTED), fila admin, selo. Gate do marketplace. | 2 |
 | **B9** | **Placements** | Entidade placement (salário final, fee, split 75/25, garantia 60/90d), confirmação bilateral + auto-confirm 7d, estados P3, disputa, estorno/reposição. | 4 |
 | **B10** | Avaliações de hunter | `reviews` (1–5 + comentário, 1 por placement, imutável — RN-NOVA-07), agregadas no perfil B5. | 3 |
@@ -86,11 +86,13 @@
 | B15 | Delegação de time em candidaturas | `listByVaga/updateStatus/notas` hoje exigem `createdById` — abrir para OWNER/MANAGER do time (dívida já documentada). | 2 |
 | B16 | Limpeza | Remover campos de Serviços (isService etc.), PlanLimitGuard morto, enum deprecated; padronizar migrações (sem synchronize). | 0 |
 
-**Ordem recomendada no backend:** B14 → B2/B7/B6 → B1 → B3+B4 (núcleo) → B5+B8 → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo.
+**Ordem recomendada no backend:** ~~B14 → B2/B7~~ ✅ → B6 → B1 → B3+B4 (núcleo) → B5+B8 → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo.
 
 ---
 
 ## Dívidas / Notas
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
 - Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
-- Páginas pendentes referenciadas (T16 convite, T17 verificação e-mail, T18 utilitárias, /app/escolher-perfil de T-C00) ainda não existem — links já apontam para essas rotas.
+- Páginas pendentes referenciadas (T17 verificação e-mail, T18 utilitárias, /app/escolher-perfil de T-C00) ainda não existem — links já apontam para essas rotas. (T16 convite feita em 2026-07-05, ver B7.)
+- **`qa-test-accounts.json` não tem conta de plano TEAM/ENTERPRISE** — falta para validar B7 (convite de time) ponta a ponta. Próxima vez que Andres tiver uma, adicionar lá.
+- **B2/B7 (2026-07-05):** implementados e com o "caminho feliz sem senha" validado no Chrome contra os servers reais (forgot-password disparado de verdade; páginas de token inválido renderizam certo). Falta o Andres completar manualmente: (1) abrir o e-mail de reset e digitar a nova senha; (2) criar um convite de time de verdade e aceitá-lo logado como o convidado. Chrome MCP não consegue abrir `inboxes.com`/`getnada.com` (bloqueado) para conferir o e-mail visualmente.

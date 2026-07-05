@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// T15 — Redefinir senha (design-spec/01) — ver auth.resetPassword (TODO backend B2)
+// T15 — Redefinir senha (design-spec/01) — ver auth.resetPassword (backend B2 ✅)
 definePageMeta({ layout: 'auth' })
 useSeoMeta({ title: 'Redefinir senha' })
 

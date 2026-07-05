@@ -87,29 +87,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   /**
-   * TODO(backend B2): `POST /auth/forgot-password` não existe ainda (sem módulo de e-mail, B14).
-   * Resposta deve ser sempre genérica (anti-enumeração) — em dev, mocka sucesso após delay.
+   * B2 — Solicita link de redefinição de senha. Backend responde sempre com
+   * mensagem genérica (anti-enumeração), independente do e-mail existir.
    */
   async function forgotPassword(email: string) {
-    if (import.meta.dev) {
-      await new Promise(resolve => setTimeout(resolve, 600))
-      return
-    }
     await api.post('/auth/forgot-password', { email })
   }
 
   /**
-   * TODO(backend B2): `POST /auth/reset-password/:token` não existe ainda.
-   * Token deve expirar em 1h. Em dev, mocka: tokens "invalid"/"expired" simulam link expirado.
+   * B2 — Redefine a senha a partir do token emailado.
+   * Token expira em 1h (backend); 404/410 = link inválido ou expirado.
    */
   async function resetPassword(token: string, password: string) {
-    if (import.meta.dev) {
-      await new Promise(resolve => setTimeout(resolve, 600))
-      if (token === 'invalid' || token === 'expired') {
-        throw { status: 410, message: 'Token inválido ou expirado' }
-      }
-      return
-    }
     await api.post(`/auth/reset-password/${token}`, { password })
   }
 
