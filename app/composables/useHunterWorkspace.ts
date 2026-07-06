@@ -8,7 +8,9 @@ export function useHunterWorkspace() {
   nav.value = [
     { label: 'Início', to: '/app/hunter' },
     { label: 'Minhas Vagas', to: '/app/hunter/vagas' },
+    { label: 'Marketplace', to: '/app/hunter/marketplace' },
     { label: 'Meus Candidatos', to: '/app/hunter/candidatos' },
+    { label: 'Meu Perfil', to: '/app/hunter/perfil' },
   ]
   label.value = 'Hunter'
 }

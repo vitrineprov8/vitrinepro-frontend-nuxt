@@ -1,5 +1,6 @@
 // Pinia store de autenticação — contrato do backend NestJS v1 (auth.controller)
 import { defineStore } from 'pinia'
+import type { HunterVerificationStatus, VerificationDocument } from '~/types/hunter'
 
 export type PlanTier = 'FREE' | 'RECRUITER' | 'TEAM' | 'ENTERPRISE'
 export type WorkspaceKind = 'candidato' | 'hunter' | 'consultoria' | 'empresa' | 'admin'
@@ -23,6 +24,14 @@ export interface User {
   activeContextTeamId: string | null
   /** B1 — personas ativas da conta; null/[] em contas antigas pré-migração. */
   personas: Persona[] | null
+  /** B5 — chips de especialidade e anos de experiência do hunter. */
+  hunterSpecialties: string[] | null
+  hunterYearsExperience: number | null
+  /** B8 — gate do marketplace: só APPROVED pode trabalhar vagas com fee. */
+  verificationStatus: HunterVerificationStatus
+  verificationRejectionReason: string | null
+  verificationDocs: VerificationDocument[] | null
+  verificationLinkedinUrl: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {

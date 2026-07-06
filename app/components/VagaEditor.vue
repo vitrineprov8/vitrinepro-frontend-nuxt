@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // T-H04 — Editor de vaga (nova + editar). Backend: POST/PATCH /vagas, POST /vagas/:id/publish.
-// Fee/maxHunters/exclusividade da spec dependem de B4 e ficam de fora por ora.
+// Fee/maxHunters/exclusividade (B4) ligados ao backend real.
 import type { Vaga, PaginatedResult } from '~/types/vaga'
 import { VAGA_SEGMENTS, VAGA_SEGMENT_LABEL, VAGA_TYPE_LABEL, VAGA_WORK_MODE_LABEL } from '~/types/vaga'
 
@@ -27,6 +27,25 @@ const deadline = ref<string | null>(null)
 const contactEmail = ref('')
 const allowHunters = ref(false)
 const hunterContactPhone = ref('')
+const feePercent = ref<number | null>(null)
+const feeAmount = ref<number | null>(null)
+const maxHunters = ref<number | null>(5)
+const exclusivityDays = ref<number | null>(90)
+
+// UiInput só modela string (modelValue: string) — proxies numéricos para os
+// campos de fee/limites (v-model.number não é suportado por componentes custom).
+const feePercentStr = computed({
+  get: () => (feePercent.value != null ? String(feePercent.value) : ''),
+  set: (v: string) => { feePercent.value = v === '' ? null : Number(v) },
+})
+const maxHuntersStr = computed({
+  get: () => (maxHunters.value != null ? String(maxHunters.value) : ''),
+  set: (v: string) => { maxHunters.value = v === '' ? null : Math.trunc(Number(v)) },
+})
+const exclusivityDaysStr = computed({
+  get: () => (exclusivityDays.value != null ? String(exclusivityDays.value) : ''),
+  set: (v: string) => { exclusivityDays.value = v === '' ? null : Math.trunc(Number(v)) },
+})
 
 const segmentOptions = VAGA_SEGMENTS.map(s => ({ value: s, label: VAGA_SEGMENT_LABEL[s] }))
 const typeOptions = (Object.keys(VAGA_TYPE_LABEL) as (keyof typeof VAGA_TYPE_LABEL)[]).map(t => ({ value: t, label: VAGA_TYPE_LABEL[t] }))
@@ -44,6 +63,11 @@ if (props.vagaId) {
     segment.value = v.segment; salaryMin.value = v.salaryMin != null ? Number(v.salaryMin) : null
     salaryMax.value = v.salaryMax != null ? Number(v.salaryMax) : null
     deadline.value = v.deadline; allowHunters.value = v.allowHunters
+    hunterContactPhone.value = v.hunterContactPhone ?? ''
+    feePercent.value = v.feePercent != null ? Number(v.feePercent) : null
+    feeAmount.value = v.feeAmount != null ? Number(v.feeAmount) : null
+    maxHunters.value = v.maxHunters ?? 5
+    exclusivityDays.value = v.exclusivityDays ?? 90
   }
 }
 
@@ -63,6 +87,10 @@ function payload() {
     contactEmail: contactEmail.value || undefined,
     allowHunters: allowHunters.value,
     hunterContactPhone: allowHunters.value ? (hunterContactPhone.value || undefined) : undefined,
+    feePercent: allowHunters.value ? (feePercent.value ?? undefined) : undefined,
+    feeAmount: allowHunters.value ? (feeAmount.value ?? undefined) : undefined,
+    maxHunters: allowHunters.value ? (maxHunters.value ?? undefined) : undefined,
+    exclusivityDays: allowHunters.value ? (exclusivityDays.value ?? undefined) : undefined,
   }
 }
 
@@ -95,7 +123,7 @@ async function save(): Promise<boolean> {
 
 // Autosave (debounce) — só depois que existe um rascunho.
 let timer: ReturnType<typeof setTimeout> | null = null
-watch([title, description, requirements, benefits, location, type, workMode, segment, salaryMin, salaryMax, deadline, contactEmail, allowHunters, hunterContactPhone], () => {
+watch([title, description, requirements, benefits, location, type, workMode, segment, salaryMin, salaryMax, deadline, contactEmail, allowHunters, hunterContactPhone, feePercent, feeAmount, maxHunters, exclusivityDays], () => {
   if (!id.value) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => { save() }, 1200)
@@ -107,6 +135,9 @@ const errors = computed(() => {
   const e: string[] = []
   if (title.value.trim().length < 8) e.push('O título precisa ter ao menos 8 caracteres.')
   if (description.value.trim().length < 100) e.push('A descrição precisa ter ao menos 100 caracteres.')
+  if (allowHunters.value && feePercent.value == null && feeAmount.value == null) {
+    e.push('Defina o fee (percentual ou valor fixo) para vagas abertas a hunters.')
+  }
   return e
 })
 
@@ -230,7 +261,15 @@ function irPipeline() {
           </label>
           <template v-if="allowHunters">
             <UiInput v-model="hunterContactPhone" label="Telefone p/ hunters (WhatsApp)" type="tel" placeholder="(11) 90000-0000" />
-            <p class="editor__hint">O valor do fee e limite de hunters chegam com o marketplace (em breve).</p>
+            <div class="editor__salary">
+              <UiInput v-model="feePercentStr" label="Fee (%)" type="number" placeholder="Ex.: 50" />
+              <UiCurrencyInput v-model="feeAmount" label="Fee fixo (R$)" />
+            </div>
+            <p class="editor__hint">Informe ao menos um dos dois — % é aplicado sobre o salário contratado.</p>
+            <div class="editor__salary">
+              <UiInput v-model="maxHuntersStr" label="Máx. hunters aceitos" type="number" placeholder="5" />
+              <UiInput v-model="exclusivityDaysStr" label="Exclusividade (dias)" type="number" placeholder="90" />
+            </div>
           </template>
         </UiCard>
       </aside>

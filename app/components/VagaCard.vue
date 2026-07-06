@@ -1,10 +1,21 @@
 <script setup lang="ts">
-// VagaCard — card reutilizável de vaga (carrossel da Home T01, grid de /vagas T05, "semelhantes" T06).
-// Campos 100% reais do backend (vaga.entity.ts). Pill de fee em R$ aguarda gap B4.
+// VagaCard — card reutilizável de vaga (carrossel da Home T01, grid de /vagas T05,
+// "semelhantes" T06, marketplace de hunters T-H07). Campos 100% reais do backend.
 import type { Vaga } from '~/types/vaga'
 import { VAGA_TYPE_LABEL, VAGA_WORK_MODE_LABEL, VAGA_SEGMENT_LABEL } from '~/types/vaga'
 
 const props = defineProps<{ vaga: Vaga }>()
+
+// B4 — pill de fee, mostrado quando a vaga aceita hunters e tem fee definido.
+const feeLabel = computed(() => {
+  const pct = props.vaga.feePercent != null ? Number(props.vaga.feePercent) : null
+  const amt = props.vaga.feeAmount != null ? Number(props.vaga.feeAmount) : null
+  if (amt != null) {
+    return amt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+  }
+  if (pct != null) return `${pct}% fee`
+  return null
+})
 
 const salario = computed(() => {
   const min = props.vaga.salaryMin != null ? Number(props.vaga.salaryMin) : null
@@ -38,7 +49,8 @@ const segmentoLabel = computed(() => (props.vaga.segment ? VAGA_SEGMENT_LABEL[pr
     <UiCard clickable>
       <div class="vaga-card__head">
         <h3 class="vaga-card__title">{{ vaga.title }}</h3>
-        <UiBadge v-if="vaga.allowHunters" variant="success">Aceita hunters</UiBadge>
+        <UiBadge v-if="feeLabel" variant="success">{{ feeLabel }}</UiBadge>
+        <UiBadge v-else-if="vaga.allowHunters" variant="success">Aceita hunters</UiBadge>
       </div>
 
       <p v-if="vaga.location" class="vaga-card__location">{{ vaga.location }}</p>

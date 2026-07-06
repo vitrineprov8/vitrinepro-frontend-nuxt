@@ -127,6 +127,67 @@ function compartilhar(rede: 'whatsapp' | 'linkedin' | 'copiar') {
 function goLogin() { navigateTo(`/login?redirect=${encodeURIComponent(route.fullPath)}`) }
 function goCadastro() { navigateTo(`/cadastro?redirect=${encodeURIComponent(route.fullPath)}`) }
 
+// --- B4 — "Quero esta vaga" (hunter interest + termos) ---
+const hunterModalOpen = ref(false)
+const hunterTermsAccepted = ref(false)
+const hunterSubmitting = ref(false)
+const hunterInterestStatus = ref<'PENDING' | 'ACCEPTED' | 'REJECTED' | null>(null)
+
+function feeLabel(v: Vaga | null) {
+  if (!v) return null
+  const pct = v.feePercent != null ? Number(v.feePercent) : null
+  const amt = v.feeAmount != null ? Number(v.feeAmount) : null
+  if (amt != null && pct != null) return `${moeda(amt)} (${pct}% do salário)`
+  if (amt != null) return moeda(amt)
+  if (pct != null) return `${pct}% do salário`
+  return null
+}
+const hunterFeeLabel = computed(() => feeLabel(vaga.value))
+
+onMounted(async () => {
+  if (!auth.isAuthenticated || !vaga.value?.allowHunters) return
+  try {
+    const interests = await api.get<{ status: 'PENDING' | 'ACCEPTED' | 'REJECTED', vaga: { id: string } | null }[]>('/me/hunter-interests')
+    hunterInterestStatus.value = interests.find(i => i.vaga?.id === vaga.value!.id)?.status ?? null
+  }
+  catch { /* silencioso */ }
+})
+
+function onQueroEstaVaga() {
+  if (!auth.isAuthenticated) { navigateTo(`/cadastro?perfil=hunter&redirect=${encodeURIComponent(route.fullPath)}`); return }
+  if (auth.user?.isCompany) {
+    toast.info('Contas empresariais não podem atuar como hunter.')
+    return
+  }
+  // B8 — gate do marketplace: hunter precisa estar verificado para registrar interesse.
+  if (auth.user?.verificationStatus !== 'APPROVED') {
+    toast.warning('Verifique seu perfil para trabalhar vagas com fee.', {
+      actionLabel: 'Verificar perfil',
+      onAction: () => navigateTo('/app/hunter/perfil'),
+    })
+    return
+  }
+  hunterTermsAccepted.value = false
+  hunterModalOpen.value = true
+}
+
+async function confirmarInteresse() {
+  if (!vaga.value || !hunterTermsAccepted.value) return
+  hunterSubmitting.value = true
+  try {
+    await api.post(`/vagas/${vaga.value.id}/hunter-interest`, { termsAccepted: true })
+    hunterInterestStatus.value = 'PENDING'
+    hunterModalOpen.value = false
+    toast.success('Interesse registrado! A empresa vai avaliar seu pedido.')
+  }
+  catch (e) {
+    const err = e as { status?: number, message?: string }
+    if (err.status === 409) { hunterInterestStatus.value = 'PENDING'; toast.info('Você já registrou interesse nesta vaga.') }
+    else toast.error(err.message || 'Não foi possível registrar seu interesse.')
+  }
+  finally { hunterSubmitting.value = false }
+}
+
 // --- SEO ---
 useSeoMeta({
   title: () => vaga.value ? vaga.value.title : 'Vaga não encontrada',
@@ -233,8 +294,24 @@ useHead(() => vaga.value
         <!-- Bloco hunter -->
         <UiCard v-if="vaga.allowHunters" class="vd__hunter">
           <strong>Esta vaga aceita hunters</strong>
-          <p class="text-secondary">Trabalhe esta vaga e indique candidatos. O fee em R$ chega com o marketplace.</p>
-          <UiButton block variant="secondary" @click="navigateTo('/cadastro?perfil=hunter')">Quero esta vaga</UiButton>
+          <p class="text-secondary">
+            Trabalhe esta vaga e indique candidatos.
+            <template v-if="hunterFeeLabel"> Fee: <strong>{{ hunterFeeLabel }}</strong></template>
+          </p>
+          <p v-if="vaga.exclusivityDays || vaga.maxHunters" class="vd__hunter-terms text-secondary">
+            Exclusividade de {{ vaga.exclusivityDays }} dias por candidato · máx. {{ vaga.maxHunters }} hunters aceitos
+          </p>
+
+          <template v-if="hunterInterestStatus === 'ACCEPTED'">
+            <UiBadge variant="success">✓ Você foi aceito nesta vaga</UiBadge>
+          </template>
+          <template v-else-if="hunterInterestStatus === 'PENDING'">
+            <UiBadge variant="neutral">Aguardando aprovação da empresa</UiBadge>
+          </template>
+          <template v-else-if="hunterInterestStatus === 'REJECTED'">
+            <UiBadge variant="neutral">Interesse não aceito desta vez</UiBadge>
+          </template>
+          <UiButton v-else block variant="secondary" @click="onQueroEstaVaga">Quero esta vaga</UiButton>
         </UiCard>
 
         <!-- Compartilhar -->
@@ -264,6 +341,22 @@ useHead(() => vaga.value
         <UiButton block variant="secondary" @click="goLogin">Já tenho conta</UiButton>
       </div>
     </UiModal>
+
+    <!-- Modal termos de intermediação (T-H07, B4) -->
+    <UiModal :open="hunterModalOpen" title="Quero esta vaga" size="sm" @close="hunterModalOpen = false">
+      <div v-if="vaga" class="vd__terms">
+        <p v-if="hunterFeeLabel">Fee: <strong>{{ hunterFeeLabel }}</strong> — você recebe 75%.</p>
+        <p>Exclusividade de indicação: <strong>{{ vaga.exclusivityDays }} dias</strong> por candidato.</p>
+        <p>Máximo de <strong>{{ vaga.maxHunters }}</strong> hunters aceitos nesta vaga.</p>
+        <label class="vd__terms-check">
+          <input v-model="hunterTermsAccepted" type="checkbox">
+          <span>Aceito os termos de intermediação</span>
+        </label>
+      </div>
+      <template #footer>
+        <UiButton block :loading="hunterSubmitting" :disabled="!hunterTermsAccepted" @click="confirmarInteresse">Enviar interesse</UiButton>
+      </template>
+    </UiModal>
   </div>
 </template>
 
@@ -291,6 +384,12 @@ useHead(() => vaga.value
 .vd__hunter { background: var(--brand-100); }
 .vd__hunter strong { display: block; color: var(--brand-700); }
 .vd__hunter p { font-size: var(--text-13); margin: var(--sp-1) 0 0; }
+.vd__hunter-terms { margin-bottom: var(--sp-3) !important; }
+.vd__hunter .badge { margin-bottom: var(--sp-2); }
+
+.vd__terms { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--text-14); color: var(--ink-700); }
+.vd__terms-check { display: flex; align-items: flex-start; gap: var(--sp-2); margin-top: var(--sp-3); cursor: pointer; font-size: var(--text-13); }
+.vd__terms-check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--brand-600); flex-shrink: 0; }
 
 .vd__share-label { font-size: var(--text-13); color: var(--ink-500); }
 .vd__share-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }

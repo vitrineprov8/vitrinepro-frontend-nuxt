@@ -70,8 +70,9 @@ async function submit() {
     emit('submitted')
   }
   catch (e) {
-    const err = e as { status?: number, message?: string }
+    const err = e as { status?: number, code?: string, message?: string }
     if (err.status === 409) submitError.value = 'Este candidato já foi indicado a esta vaga (trava de 90 dias — RN-NOVA-02). Tente outra vaga.'
+    else if (err.code === 'HUNTER_NOT_VERIFIED') submitError.value = 'Verifique seu perfil (menu "Meu Perfil") para trabalhar vagas com fee.'
     else if (err.status === 403) submitError.value = 'Esta vaga não aceita submissões de hunters.'
     else submitError.value = err.message || 'Não foi possível submeter. Tente novamente.'
   }

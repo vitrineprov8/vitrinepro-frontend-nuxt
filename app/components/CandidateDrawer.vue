@@ -4,6 +4,8 @@ import type { PipelineStage } from '~/components/PipelineStagesModal.vue'
 
 export interface Application {
   id: string
+  /** B4 — 'DIRECT' (candidatura direta) ou 'HUNTER' (submetido por hunter). */
+  source?: 'DIRECT' | 'HUNTER'
   pipelineStage: string
   isRejected: boolean
   message: string | null
@@ -11,6 +13,9 @@ export interface Application {
   snapshotEmail: string | null
   snapshotPhone: string | null
   snapshotLocation: string | null
+  /** B4 — RN-NOVA-03: true quando o contato foi ocultado (candidato de hunter
+   *  ainda não chegou na etapa de liberação configurada em /profile). */
+  contactMasked?: boolean
   createdAt: string
   cv: { id: string, label: string | null, fileUrl: string | null } | null
   user: { id: string, firstName: string, lastName: string, username: string | null, avatarUrl: string | null } | null
@@ -130,13 +135,24 @@ function fmt(d: string) {
           <div>
             <h3 class="cd__name">{{ application.snapshotFullName }}</h3>
             <p class="cd__meta">Candidatura em {{ fmt(application.createdAt) }}</p>
-            <UiBadge variant="neutral">Etapa: {{ stageLabel(application.pipelineStage) }}</UiBadge>
+            <div class="cd__badges">
+              <UiBadge variant="neutral">Etapa: {{ stageLabel(application.pipelineStage) }}</UiBadge>
+              <UiBadge v-if="application.source === 'HUNTER'" variant="outline">Indicado por hunter</UiBadge>
+            </div>
           </div>
         </div>
 
         <dl class="cd__contact">
-          <div v-if="application.snapshotEmail"><dt>E-mail</dt><dd>{{ application.snapshotEmail }}</dd></div>
-          <div v-if="application.snapshotPhone"><dt>Telefone</dt><dd>{{ application.snapshotPhone }}</dd></div>
+          <template v-if="application.contactMasked">
+            <div class="cd__masked">
+              <dt>Contato</dt>
+              <dd>🔒 Oculto até avançar de etapa <span class="cd__masked-hint">(preferência de mascaramento em Conta)</span></dd>
+            </div>
+          </template>
+          <template v-else>
+            <div v-if="application.snapshotEmail"><dt>E-mail</dt><dd>{{ application.snapshotEmail }}</dd></div>
+            <div v-if="application.snapshotPhone"><dt>Telefone</dt><dd>{{ application.snapshotPhone }}</dd></div>
+          </template>
           <div v-if="application.snapshotLocation"><dt>Local</dt><dd>{{ application.snapshotLocation }}</dd></div>
         </dl>
 
@@ -203,6 +219,9 @@ function fmt(d: string) {
 .cd__contact div { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--text-14); }
 .cd__contact dt { color: var(--ink-500); margin: 0; }
 .cd__contact dd { color: var(--ink-900); margin: 0; }
+.cd__badges { display: flex; gap: var(--sp-2); margin-top: var(--sp-1); flex-wrap: wrap; }
+.cd__masked dd { text-align: right; }
+.cd__masked-hint { display: block; font-size: var(--text-12); color: var(--ink-500); }
 .cd__links { display: flex; gap: var(--sp-2); }
 .cd__label { font-size: var(--text-13); font-weight: 600; color: var(--ink-700); }
 .cd__message p { color: var(--ink-700); line-height: 1.5; margin-top: var(--sp-1); }

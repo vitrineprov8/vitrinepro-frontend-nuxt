@@ -10,6 +10,10 @@ useSeoMeta({ title: 'Meus Candidatos' })
 
 const api = useApi()
 const toast = useToast()
+const auth = useAuthStore()
+// B8 — submissão real só funciona com perfil verificado; avisa aqui pra não
+// só descobrir o bloqueio dentro do modal de submissão.
+const isVerified = computed(() => auth.user?.verificationStatus === 'APPROVED')
 
 const { data: list, pending, refresh } = await useAsyncData('hunter-candidates', () =>
   api.get<HunterCandidate[]>('/hunter-candidates').catch(() => []))
@@ -145,6 +149,11 @@ useEventListener(window, 'scroll', closeMenu, true)
       </div>
       <UiButton @click="showAdd = true">＋ Adicionar candidato</UiButton>
     </header>
+
+    <div v-if="!isVerified" class="cand__gate-banner">
+      <span>Verifique seu perfil para poder submeter candidatos a vagas com fee.</span>
+      <UiButton size="sm" variant="secondary" @click="navigateTo('/app/hunter/perfil')">Verificar perfil</UiButton>
+    </div>
 
     <div class="cand__toolbar">
       <UiInput v-model="search" placeholder="Buscar por nome, e-mail, cargo ou cidade" class="cand__search" />
@@ -286,6 +295,7 @@ useEventListener(window, 'scroll', closeMenu, true)
 .cand__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); }
 .cand__header h1 { font-size: var(--text-22); }
 .cand__sub { font-size: var(--text-13); color: var(--ink-500); margin-top: var(--sp-1); max-width: 46ch; }
+.cand__gate-banner { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); background: var(--amber-100); border-radius: var(--radius-input); padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-4); font-size: var(--text-13); color: var(--ink-700); }
 .cand__toolbar { margin: var(--sp-5) 0 var(--sp-4); }
 .cand__search { max-width: 420px; }
 .cand__skel { display: flex; flex-direction: column; gap: var(--sp-2); }

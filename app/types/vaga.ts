@@ -25,8 +25,18 @@ export interface Vaga {
   status: VagaStatus
   publishedAt: string | null
   segment: VagaSegment | null
-  /** Vaga aceita interesse de hunters externos (proxy de "vaga com fee" até o gap B4). */
+  /** Vaga aceita interesse de hunters externos. */
   allowHunters: boolean
+  /** WhatsApp/telefone mostrado aos hunters quando allowHunters=true. */
+  hunterContactPhone: string | null
+  /** B4 — fee % sobre o salário contratado (ex.: 50 = 50%). */
+  feePercent: number | string | null
+  /** B4 — valor fixo do fee em R$ (alternativa/complemento ao feePercent). */
+  feeAmount: number | string | null
+  /** B4 — máx. de hunters com interesse ACEITO simultâneo. Default 5. */
+  maxHunters: number
+  /** B4 — janela de exclusividade (dias) contra resubmissão do mesmo candidato. Default 90. */
+  exclusivityDays: number
   createdAt: string
   updatedAt: string
   /** Só presente em /vagas/me (listMine). Ausente no público. */
@@ -53,6 +63,33 @@ export interface CompanyVagaSummary {
   salaryMin: number | string | null
   salaryMax: number | string | null
   publishedAt: string | null
+  allowHunters?: boolean
+  feePercent?: number | string | null
+  feeAmount?: number | string | null
+}
+
+/** B4 — item de GET /me/hunter-interests (vaga aninhada com termos). */
+export interface HunterInterestVaga {
+  id: string
+  title: string
+  slug: string
+  segment: VagaSegment | null
+  status: VagaStatus
+  location: string | null
+  feePercent: number | string | null
+  feeAmount: number | string | null
+  maxHunters: number
+  exclusivityDays: number
+  hunterContactPhone: string | null
+  contactEmail: string | null
+}
+
+export interface HunterInterest {
+  id: string
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED'
+  termsAcceptedAt: string | null
+  createdAt: string
+  vaga: HunterInterestVaga | null
 }
 
 // Currículo do candidato (GET /cv)
