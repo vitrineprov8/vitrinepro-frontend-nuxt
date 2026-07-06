@@ -6,7 +6,7 @@ definePageMeta({ layout: false })
 interface StageHistory { stage: string, enteredAt: string, byUserName: string, note: string | null }
 interface ProcessSnapshot {
   candidate: { name: string, avatarUrl: string | null, profession: string | null }
-  vaga: { title: string, segment: string | null, location: string | null } | null
+  vaga: { title: string, segment: string | null, location: string | null, companyName: string | null } | null
   pipelineStage: string
   isRejected: boolean
   generalScore: number | null
@@ -77,6 +77,7 @@ useSeoMeta({
           Processo seletivo — <strong>{{ snap.vaga?.title ?? 'Vaga' }}</strong>
           <span v-if="snap.vaga?.location"> · {{ snap.vaga.location }}</span>
         </p>
+        <p v-if="snap.vaga?.companyName" class="proc__company">{{ snap.vaga.companyName }}</p>
       </header>
 
       <main class="proc__body">
@@ -161,6 +162,7 @@ useSeoMeta({
 
 .proc__top { border-bottom: 1px solid var(--ink-100); padding-bottom: var(--sp-4); margin-bottom: var(--sp-6); }
 .proc__subtitle { margin-top: var(--sp-2); color: var(--ink-700); font-size: var(--text-16); }
+.proc__company { margin-top: var(--sp-1); color: var(--ink-500); font-size: var(--text-13); }
 
 .proc__candidate { display: flex; align-items: center; gap: var(--sp-4); }
 .proc__cand-name { font-size: var(--text-18); }

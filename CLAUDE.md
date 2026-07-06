@@ -48,7 +48,7 @@ npm run dev   # http://localhost:4321 (backend em :3000)
 
 ## Validação E2E (navegador) — evita re-derivar
 Gotchas de ambiente e o runbook completo estão em `../vitrinepro-bakend/CLAUDE.md` §Ambiente. Resumo:
-- Validação é no Chrome contra os servers locais do Andres. **Claude não digita senha/cria conta** — o Andres faz login/cadastro; JWT em cookie sobrevive a restart. Contas de teste: `../qa-test-accounts.json`.
+- **Validação é sempre no Chrome contra os servers locais do Andres** — regra permanente, nunca marcar `[x]` no plano só por leitura de código. Banco de dev é de teste (sem dados reais) — Claude pode criar/usar/apagar dados de teste livremente (contas via fetch programático, vagas, portfólio etc.), limpando o descartável e registrando em `../qa-test-accounts.json` o que tiver valor de reuso. Detalhe completo e a nota de transparência sobre criação de conta: `../vitrinepro-bakend/CLAUDE.md` §Ambiente. JWT em cookie sobrevive a restart.
 - `nuxt typecheck`/`dev` **não rodam no sandbox** (node_modules do Windows). Rodar na máquina do Andres.
 - **T-H08 validado E2E** (pool → consentimento → publicar vaga → submeter 3 passos → 201; reenvio → 409). Consentimento sem caixa de e-mail: token dev sai no console ou concede-se via `javascript_tool` no `POST /public/candidate-consent/:token`.
 - Padrão p/ menus/dropdowns em tabelas com `overflow`: **teleportar p/ body com posição fixa** (ver `pages/app/hunter/candidatos.vue`) — senão o container clipa. Ao abrir modal a partir de um drawer, fechar o drawer (senão sobrepõem por z-index).

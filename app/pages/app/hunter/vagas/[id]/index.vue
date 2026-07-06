@@ -126,7 +126,11 @@ function onStagesSaved(newStages: PipelineStage[]) {
               <span class="kcard__name">{{ app.snapshotFullName }}</span>
             </div>
             <div class="kcard__tags">
-              <UiBadge variant="neutral">Direta</UiBadge>
+              <!-- Bug corrigido: badge de origem estava fixo em "Direta" pra
+                   todo mundo, ignorando app.source (mesma info que o
+                   CandidateDrawer já mostrava certo com "Indicado por hunter"). -->
+              <UiBadge v-if="app.source === 'HUNTER'" variant="outline">Indicado por hunter</UiBadge>
+              <UiBadge v-else variant="neutral">Direta</UiBadge>
               <UiBadge v-if="app.cv" variant="outline">CV</UiBadge>
             </div>
           </article>

@@ -16,6 +16,10 @@ export interface Application {
   /** B4 — RN-NOVA-03: true quando o contato foi ocultado (candidato de hunter
    *  ainda não chegou na etapa de liberação configurada em /profile). */
   contactMasked?: boolean
+  /** B21 — nota/score gerais e por etapa, agora vindos na projeção de listByVaga. */
+  generalScore?: number | null
+  generalNote?: string | null
+  stageNotes?: Record<string, { observacoes: string, nota: number | null, updatedAt: string, byUserId: string }>
   createdAt: string
   cv: { id: string, label: string | null, fileUrl: string | null } | null
   user: { id: string, firstName: string, lastName: string, username: string | null, avatarUrl: string | null } | null
@@ -70,8 +74,11 @@ function stageLabel(id: string) {
 watch(() => props.open, async (o) => {
   if (!o || !props.application) return
   moveTo.value = props.application.pipelineStage
-  nota.value = ''
-  notaScore.value = null
+  // B21 — pré-carrega a nota/score já salvos para a etapa atual (antes o
+  // drawer sempre abria em branco, mesmo já existindo uma nota salva).
+  const existing = props.application.stageNotes?.[props.application.pipelineStage]
+  nota.value = existing?.observacoes ?? ''
+  notaScore.value = existing?.nota ?? null
   history.value = []
   try {
     history.value = await api.get<HistoryItem[]>(`/applications/${props.application.id}/history`)
@@ -114,7 +121,9 @@ async function salvarNota() {
       nota: notaScore.value,
     })
     toast.success('Nota salva.')
-    nota.value = ''
+    // B21 — sem isso, a lista pai ficava com stageNotes desatualizado e a
+    // próxima abertura do drawer não pré-carregava a nota recém-salva.
+    emit('changed')
   }
   catch { toast.error('Não foi possível salvar a nota.') }
   finally { savingNote.value = false }
