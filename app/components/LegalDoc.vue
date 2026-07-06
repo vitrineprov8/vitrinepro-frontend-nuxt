@@ -23,7 +23,7 @@ defineProps<{ title: string, updated: string, sections: Section[] }>()
           <p>{{ s.body }}</p>
         </section>
         <p class="legal__disclaimer">
-          Este é um texto de exemplo (placeholder). Substitua pelo conteúdo jurídico final antes de publicar.
+          Este documento foi redigido internamente com base no funcionamento real da plataforma. Recomendamos revisão por um advogado antes do lançamento público, especialmente quanto a obrigações da LGPD.
         </p>
       </article>
     </div>
