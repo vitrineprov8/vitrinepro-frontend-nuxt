@@ -9,11 +9,14 @@ onMounted(async () => {
   if (!auth.user) await auth.fetchMe()
   const u = auth.user
   if (!u) return navigateTo('/login')
-  // Heurística inicial — evolui com o campo de persona (ver PLANO, backend gap B1)
+  // Heurística de roteamento por persona (F2 — antes mandava candidato/empresa
+  // para rotas inexistentes; agora usa personas + fallback seguro).
   if (u.isCompany) return navigateTo('/app/empresa')
-  const last = localStorage.getItem('vp_last_workspace')
+  const last = safeInternalPath(localStorage.getItem('vp_last_workspace'), '')
   if (last) return navigateTo(last)
-  // TODO(B1): sem persona no backend, default para o workspace hunter.
+  if (u.personas?.includes('HUNTER')) return navigateTo('/app/hunter')
+  if (u.personas?.includes('CANDIDATO')) return navigateTo('/app/candidato')
+  // Sem persona nenhuma ativada ainda (conta antiga pré-B1) — default hunter.
   return navigateTo('/app/hunter')
 })
 </script>

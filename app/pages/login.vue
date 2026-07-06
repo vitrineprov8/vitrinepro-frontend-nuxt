@@ -15,7 +15,7 @@ async function submit() {
   loading.value = true
   try {
     await auth.login(email.value, password.value)
-    navigateTo((route.query.redirect as string) || '/app')
+    navigateTo(safeInternalPath(route.query.redirect))
   }
   catch (e) {
     const err = e as { status?: number }

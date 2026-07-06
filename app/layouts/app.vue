@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Layout do app — sidebar escura + topbar (design-spec/00 §3.9)
 // navEntries definidos por workspace via composable useWorkspaceNav (cada workspace estende)
-import { Menu, Bell, ChevronDown } from 'lucide-vue-next'
+import { Menu, Bell, ChevronDown, User, LogOut } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const sidebarOpen = ref(false) // mobile drawer
@@ -11,8 +11,25 @@ const route = useRoute()
 const nav = useState<{ label: string, to: string, icon?: unknown }[]>('workspace-nav', () => [])
 const workspaceLabel = useState<string>('workspace-label', () => 'Painel')
 
+// F1 — menu do avatar (design-spec 00 §3.9): dropdown com Minha conta / Sair
+const userMenuOpen = ref(false)
+const userMenuRoot = ref<HTMLElement | null>(null)
+onClickOutside(userMenuRoot, () => { userMenuOpen.value = false })
+
+function onLogout() {
+  userMenuOpen.value = false
+  auth.logout()
+}
+
+// "Minha conta" ainda não tem tela dedicada (Fase 4) — manda para o perfil
+// existente do workspace atual em vez de gerar 404 (par de F2).
+const accountLink = computed(() => {
+  if (auth.user?.personas?.includes('HUNTER')) return '/app/hunter/perfil'
+  return '/app'
+})
+
 onMounted(() => auth.fetchMe())
-watch(() => route.fullPath, () => { sidebarOpen.value = false })
+watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.value = false })
 </script>
 
 <template>
@@ -35,12 +52,27 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false })
         <span class="shell__breadcrumb">{{ workspaceLabel }}</span>
         <div class="shell__topbar-right">
           <button class="shell__iconbtn" aria-label="Notificações"><Bell :size="20" /></button>
-          <button v-if="auth.user" class="shell__user">
-            <img v-if="auth.user.avatarUrl" :src="auth.user.avatarUrl" :alt="auth.user.firstName" class="shell__avatar">
-            <span v-else class="shell__avatar shell__avatar--fallback">{{ auth.user.firstName?.[0] }}</span>
-            <span class="shell__username">{{ auth.user.firstName }}</span>
-            <ChevronDown :size="16" />
-          </button>
+          <div v-if="auth.user" ref="userMenuRoot" class="shell__user-wrap">
+            <button
+              class="shell__user"
+              aria-haspopup="menu"
+              :aria-expanded="userMenuOpen"
+              @click="userMenuOpen = !userMenuOpen"
+            >
+              <img v-if="auth.user.avatarUrl" :src="auth.user.avatarUrl" :alt="auth.user.firstName" class="shell__avatar">
+              <span v-else class="shell__avatar shell__avatar--fallback">{{ auth.user.firstName?.[0] }}</span>
+              <span class="shell__username">{{ auth.user.firstName }}</span>
+              <ChevronDown :size="16" class="shell__chevron" :class="{ 'shell__chevron--open': userMenuOpen }" />
+            </button>
+            <div v-if="userMenuOpen" class="shell__user-menu" role="menu">
+              <NuxtLink :to="accountLink" class="shell__user-menu-item" role="menuitem" @click="userMenuOpen = false">
+                <User :size="16" /> Minha conta
+              </NuxtLink>
+              <button class="shell__user-menu-item shell__user-menu-item--danger" role="menuitem" @click="onLogout">
+                <LogOut :size="16" /> Sair
+              </button>
+            </div>
+          </div>
         </div>
       </header>
       <main class="shell__content"><slot /></main>
@@ -74,12 +106,28 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false })
 .shell__breadcrumb { font-weight: 600; flex: 1; }
 .shell__topbar-right { display: flex; align-items: center; gap: var(--sp-3); }
 .shell__iconbtn { background: none; border: none; color: var(--ink-500); display: flex; }
-.shell__user { display: flex; align-items: center; gap: var(--sp-2); background: none; border: none; }
+.shell__user-wrap { position: relative; }
+.shell__user { display: flex; align-items: center; gap: var(--sp-2); background: none; border: none; cursor: pointer; }
 .shell__avatar { width: 32px; height: 32px; border-radius: var(--radius-full); object-fit: cover; }
 .shell__avatar--fallback {
   background: var(--brand-100); color: var(--brand-700); display: inline-flex;
   align-items: center; justify-content: center; font-weight: 600;
 }
+.shell__chevron { color: var(--ink-500); transition: transform var(--t-fast); }
+.shell__chevron--open { transform: rotate(180deg); }
+.shell__user-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 50; min-width: 200px;
+  background: var(--white); border: 1px solid var(--ink-100); border-radius: var(--radius-input);
+  box-shadow: var(--shadow-md); padding: var(--sp-1); display: flex; flex-direction: column;
+}
+.shell__user-menu-item {
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-input); font-size: var(--text-14); color: var(--ink-900);
+  background: none; border: none; text-align: left; width: 100%; cursor: pointer;
+}
+.shell__user-menu-item:hover { background: var(--ink-100); text-decoration: none; }
+.shell__user-menu-item--danger { color: var(--red-500); }
+.shell__user-menu-item--danger:hover { background: var(--red-100, #fee2e2); }
 .shell__content { padding: var(--sp-6); max-width: var(--container-app); width: 100%; margin-inline: auto; }
 @media (max-width: 768px) {
   .shell__sidebar { position: fixed; z-index: 60; transform: translateX(-100%); transition: transform var(--t-overlay); }

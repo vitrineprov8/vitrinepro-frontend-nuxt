@@ -134,7 +134,7 @@ async function submit() {
       localStorage.setItem('vp_last_workspace', `/app/${persona.value}`)
     }
 
-    navigateTo((route.query.redirect as string) || '/app')
+    navigateTo(safeInternalPath(route.query.redirect))
   }
   catch (e) {
     const err = e as { status?: number, message?: string }

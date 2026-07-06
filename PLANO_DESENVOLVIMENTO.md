@@ -63,6 +63,38 @@
 
 ---
 
+# §CABOS SOLTOS — Auditoria completa 2026-07-05 (frontend + backend)
+
+> Varredura sistemática pedida pelo Andres após descobrir que o logout nunca foi ligado à UI.
+> Método: grep de TODO/mock/stub nos dois repos, cruzamento de todos os links internos (`to=`/`navigateTo`/`href`) contra as páginas existentes, leitura dos controllers vs design-spec.
+> Códigos: **F#** = frontend v2 · **B#** continua a tabela §BACKEND abaixo (B17–B21 novos).
+
+## Críticos (quebram fluxo de usuário real hoje)
+
+| # | Gap | Descrição | Fase sugerida |
+|---|---|---|---|
+| [x] ~~**F1**~~ ✅ | **Menu do avatar + Sair** | **FEITO** (2026-07-05). `layouts/app.vue`: dropdown com click-outside (`onClickOutside`), "Minha conta" (linka para `/app/hunter/perfil` se persona HUNTER, senão `/app`) e "Sair" ligado a `auth.logout()`. Spec 00 §3.9 implementada. | agora |
+| [x] ~~**F2**~~ ✅ | **Redirect pós-login para rotas que não existem** | **FEITO** (2026-07-05). Criadas `pages/app/empresa/index.vue` e `pages/app/candidato/index.vue` (placeholders "workspace em construção" com CTA para página pública/vagas — correção real ainda é FASE 3). `pages/app/index.vue` agora roteia por `personas` (HUNTER/CANDIDATO) com fallback seguro em vez de assumir hunter sempre. | agora |
+| [x] ~~**F9**~~ ✅ | **CTA de /precos leva a 404** | **FEITO** (2026-07-05). `onCta` em `precos.vue` não manda mais para `/app/conta/assinatura/checkout` (inexistente) — mostra toast "checkout chegando em breve" e leva para `/app` (logado) ou `/cadastro?redirect=/precos` (deslogado). Checkout real = M2, ainda pendente. Open-redirect de `?redirect=` corrigido junto (ver nota abaixo). | agora |
+
+## Frontend — telas/ligações faltantes
+
+| # | Gap | Descrição | Fase |
+|---|---|---|---|
+| **F3** | /app/escolher-perfil (T-C00) | Não existe; `app/index.vue` usa heurística `vp_last_workspace`. Já referenciada nas notas, agora formalizada. | 3 |
+| **F4** | WorkspaceSwitcher | Spec 00 §3.9 (dropdown Candidato/Hunter/Consultorias/Empresa/Admin + persistir contexto no backend antes de navegar). Nada construído; backend `set-active-context` já existe (`profile/dto/set-active-context.dto.ts`). | 3 |
+| **F5** | Sino de notificações morto | Botão Bell em `layouts/app.vue:37` sem handler nem dropdown. UI do B13 — enquanto B13 não sai, esconder ou mostrar popover "sem notificações". Busca global cmd+K (mesma linha do spec) também inexistente (já em FASE 5). | 3–5 |
+| ~~**F6**~~ ✅ | Footer com links 404 | **FEITO** (2026-07-05). `pages/sobre.vue` (institucional) e `pages/contato.vue` (formulário mailto: + canais de vendas/suporte/ajuda) criadas, layout default aplicado automaticamente. Não há endpoint de contato no backend — formulário é client-side (`mailto:`); se precisar de um form real, abrir gap novo. | 1 |
+| **F7** | Detalhe de portfólio inexistente | `perfil/[username].vue:150` linka `/portfolio/${item.slug}` — página não existe; todo card de portfólio do perfil público leva a 404. Backend tem o dado (`portfolio` público). | 3 |
+| ~~**F8**~~ ✅ | `/vagas?fee=true` ignorado | **Já estava feito** (checado em 2026-07-05, nota do audit estava desatualizada). `VagasListing.vue:24` já lê `route.query.fee === 'true'` e filtra por `allowHunters` — CTA da home funciona ponta a ponta. | 1 |
+| **F10** | Verificação de e-mail (T17) | Página não existe E o backend não tem NADA (sem coluna `emailVerified`, sem token, sem endpoints — confirmado em `user.entity.ts`/`auth.controller.ts`). Par do **B17**. | 2 |
+| **F11** | ShareProcessModal incompleto | Sem QR (sem lib) e a lista de links só vive na sessão (sem endpoint de listagem — **B18**). Snapshot público sem empresa/expiresAt (nota T11). | 2 |
+| **F12** | Textos legais placeholder | `LegalDoc.vue` avisa "substitua antes de publicar" — termos/privacidade/cookies são texto de exemplo. Bloqueia lançamento público (LGPD). | pré-launch |
+
+**Mocks visíveis já rastreados (não são gaps novos, só referência):** contadores fees/placements/hunters da home + KPIs "Minha mesa" do hunter → B12; carrossel da home cai em `vagasMock` quando o backend está offline/vazio (comportamento intencional de fallback, `index.vue:19`).
+
+---
+
 # §BACKEND — O que falta no NestJS (reutilizando `vitrinepro-bakend`)
 
 **Mantém-se intacto (já serve o v2):** auth/OAuth, profile, portfolio, education, cv, tags, vagas + publish-ledger, pipeline-templates, vaga-applications (notas/score/histórico), process-share/PDF, teams/seats, companies, saved-vagas/filters, search, coupons, seo/tombstones, storage.
@@ -85,16 +117,22 @@
 | ~~**B14**~~ ✅ | **E-mail transacional** | **FEITO e validado E2E.** Módulo `mail` (Resend via `fetch`, sem dep.; modo STUB sem key). Consentimento de B3 envia de verdade → página pública `/consentimento/[token]`. **Domínio `send.v8pro.com.br` verificado no Resend** e `MAIL_FROM=no-reply@send.v8pro.com.br` — e-mail entregue e renderizado OK numa caixa real (getnada) em 2026-07-05. **Falta (incremental):** ligar B2 (reset) e B7 (convite) ao MailService; templates de submissão/etapa/placement/fatura. | 1 |
 | B15 | Delegação de time em candidaturas | `listByVaga/updateStatus/notas` hoje exigem `createdById` — abrir para OWNER/MANAGER do time (dívida já documentada). | 2 |
 | B16 | Limpeza | Remover campos de Serviços (isService etc.), PlanLimitGuard morto, enum deprecated; padronizar migrações (sem synchronize). | 0 |
+| **B17** | **Verificação de e-mail** (novo, auditoria 2026-07-05) | Não existe fluxo nenhum: sem coluna `emailVerified`, sem token, sem endpoints. Adicionar coluna + `POST /auth/verify-email/:token` + reenvio + e-mail via MailService (B14 pronto); decidir gates (ex.: publicar vaga exige verificado). Par do **F10** (página T17). | 2 |
+| **B18** | Listagem de share-links (novo) | Não há `GET applications/:id/share` — ShareProcessModal perde os links ao recarregar. Incluir `expiresAt` + nome da empresa no snapshot de `/public/processo/:token` (nota T11) e retornar URL com domínio do front. | 2 |
+| ~~**B19**~~ ✅ | **Sanitização de respostas — hash de senha vazando** (promovido de nota) | **FEITO** (2026-07-05). `ProfileService.sanitize()` (novo, privado) remove `password`/`passwordResetToken`/`passwordResetExpiresAt` antes de devolver a entidade — aplicado em `getMyProfile`, `updateProfile`, `activatePersona` (incl. branch idempotente), `uploadAvatar`, `uploadBanner`, `setActiveContext`. `GET /auth/profile` já era seguro (retornava só campos escolhidos manualmente, não a entidade crua). Verificado por leitura direta do arquivo final (`sanitize` chamado nos 6 métodos, sem `return user`/`return this.usersRepository.save(user)` cru restante). | agora |
+| **B20** | Hardening de auth (novo) | Sem rate-limit em nenhuma rota (`@nestjs/throttler` ausente do projeto) — `/auth/login`, `/auth/forgot-password` e `/auth/register` aceitam brute-force; sem `helmet`. Adicionar ThrottlerModule (estrito em auth) + helmet no bootstrap. | 2 |
+| **B21** | `listByVaga` sem stageNotes/score (promovido de nota T-H05) | Drawer do candidato escreve nota/score sem pré-carregar os existentes. Incluir na projeção (respeitando mascaramento B4). Junto: `order=salary` no radar (resto do T05 que o B4 não cobriu). | 2 |
 
-**Ordem recomendada no backend:** ~~B14 → B2/B7 → B6 → B1 → B3+B4 → B5+B8~~ ✅ (núcleo completo) → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo.
+**Ordem recomendada no backend:** ~~B14 → B2/B7 → B6 → B1 → B3+B4 → B5+B8 → B19 → F1/F2/F9~~ ✅ (núcleo + críticos de front completos) → **B20 → B17+F10 → B18/B21** → B15 → B9 → B10 → B11 → B12/B13 → B16 contínuo. (F6/F8 do §CABOS SOLTOS também já resolvidos fora de ordem, ver tabela.)
 
 ---
 
 ## Dívidas / Notas
+- **[Auditoria 2026-07-05]** Varredura completa de cabos soltos feita a pedido do Andres (gatilho: logout invisível). Resultado consolidado em **§CABOS SOLTOS** (F1–F12) + gaps novos **B17–B21**. **[2026-07-05, mesma sessão] Críticos já resolvidos:** F1 (logout), F2 (conta candidato/empresa cai em 404 pós-login), F9 (CTA de preços quebrado), B19 (hash de senha vazando) — ver tabelas acima com ✅. F6 (footer 404) e F8 (fee=true, já estava ok) também resolvidos de passagem. E-mail deixado por último de propósito (a pedido do Andres) — segue em aberto: F10/B17.
 - `.claude/agents/` deve ser populado com `cp claude-setup/agents/*.md .claude/agents/` (sessão Cowork não pôde escrever em pasta protegida).
 - Decidir nome/marca final (placeholder HUNTRIA; logo wordmark).
 - **[B1, 2026-07-06] Migração `1749100000000-b1-user-personas` ainda não foi rodada** (`npm run migration:run`) — em dev a coluna `personas` já existe via `synchronize:true`, mas contas criadas antes do B1 ficam com `personas: null` até a migração rodar (backfill) ou até ativarem uma persona manualmente via `PATCH /profile/me/personas`. Rodar a migração antes de deploy em produção (lá `synchronize` é `false`).
-- **[B1, 2026-07-06] `password` (hash) vazando em respostas de perfil autenticado** — `GET /profile/me`, `PATCH /profile` e o novo `PATCH /profile/me/personas` retornam a entidade `User` sem remover campos sensíveis (diferente de `getPublicProfile`/`getPublicCompany`, que já filtram). Não é regressão do B1 (o padrão já existia em `getMyProfile`/`updateProfile`), mas foi descoberto durante a validação E2E do B1. Vale um gap de limpeza dedicado — adicionar `select:false` em `password` (com `addSelect` só onde precisa, ex.: login) ou strip explícito no controller/service.
+- **[B1, 2026-07-06] `password` (hash) vazando em respostas de perfil autenticado** — `GET /profile/me`, `PATCH /profile` e o novo `PATCH /profile/me/personas` retornam a entidade `User` sem remover campos sensíveis (diferente de `getPublicProfile`/`getPublicCompany`, que já filtram). Não é regressão do B1 (o padrão já existia em `getMyProfile`/`updateProfile`), mas foi descoberto durante a validação E2E do B1. Vale um gap de limpeza dedicado — adicionar `select:false` em `password` (com `addSelect` só onde precisa, ex.: login) ou strip explícito no controller/service. **→ Promovido a B19 na auditoria de 2026-07-05.**
 - Páginas pendentes referenciadas (T17 verificação e-mail, T18 utilitárias, /app/escolher-perfil de T-C00) ainda não existem — links já apontam para essas rotas. (T16 convite feita em 2026-07-05, ver B7.)
 - **`qa-test-accounts.json` não tem conta de plano TEAM/ENTERPRISE** — falta para validar B7 (convite de time) ponta a ponta. Próxima vez que Andres tiver uma, adicionar lá.
 - **B6 (2026-07-06): validado E2E completo.** Andres criou conta `isCompany` (`andresempresa@getnada.com`, username `andreshernandez9975`, empresa "ANDRES H TESTE" / tecnologia) e já estava logada no Chrome — `/empresa/andreshernandez9975` renderiza os dados reais e o estado vazio de vagas corretamente. Falta só testar a listagem `vagasAbertas` com uma vaga publicada de verdade (sem workspace Empresa ainda para isso).

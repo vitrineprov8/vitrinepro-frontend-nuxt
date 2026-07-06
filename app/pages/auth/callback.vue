@@ -28,7 +28,7 @@ onMounted(async () => {
       localStorage.removeItem('vp_persona_choice')
     }
 
-    navigateTo((route.query.redirect as string) || '/app')
+    navigateTo(safeInternalPath(route.query.redirect))
   }
   catch {
     useCookie('vp_token', { path: '/' }).value = null

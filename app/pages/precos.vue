@@ -46,13 +46,23 @@ const ctaLabel: Record<PlanInfo['tier'], string> = {
   ENTERPRISE: 'Falar com vendas',
 }
 
+// F9 — checkout real (M2) ainda não existe; `/app/conta/assinatura/checkout`
+// dava 404 em todo clique de "Assinar". Até M2 sair, manda para o app com um
+// toast avisando que o checkout está a caminho (em vez de quebrar o fluxo).
+const toast = useToast()
+
 function onCta(tier: PlanInfo['tier']) {
-  const checkout = '/app/conta/assinatura/checkout'
   if (tier === 'ENTERPRISE') { window.location.href = 'mailto:vendas@v8pro.com.br?subject=Plano Enterprise'; return }
   if (tier === 'FREE') { navigateTo(auth.isAuthenticated ? '/app' : '/cadastro'); return }
   const plan = tier.toLowerCase()
-  if (auth.isAuthenticated) navigateTo(`${checkout}?plan=${plan}`)
-  else navigateTo(`/cadastro?plan=${plan}&redirect=${encodeURIComponent(checkout)}`)
+  if (auth.isAuthenticated) {
+    toast.info(`Checkout do plano ${plan.toUpperCase()} chegando em breve. Por enquanto, seu plano continua FREE.`)
+    navigateTo('/app')
+  }
+  else {
+    // redirect leva de volta a /precos (whitelisted) em vez de uma página de checkout inexistente
+    navigateTo(`/cadastro?plan=${plan}&redirect=${encodeURIComponent('/precos')}`)
+  }
 }
 
 function priceLabel(p: PlanInfo): string {
