@@ -16,6 +16,13 @@ const userMenuOpen = ref(false)
 const userMenuRoot = ref<HTMLElement | null>(null)
 onClickOutside(userMenuRoot, () => { userMenuOpen.value = false })
 
+// F5 — sino de notificações estava morto (sem handler nem dropdown). Enquanto
+// B13 (tabela `notifications` + endpoints) não existe, mostra um popover
+// "sem notificações por enquanto" em vez de um botão decorativo.
+const notifOpen = ref(false)
+const notifRoot = ref<HTMLElement | null>(null)
+onClickOutside(notifRoot, () => { notifOpen.value = false })
+
 function onLogout() {
   userMenuOpen.value = false
   auth.logout()
@@ -29,7 +36,7 @@ const accountLink = computed(() => {
 })
 
 onMounted(() => auth.fetchMe())
-watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.value = false })
+watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.value = false; notifOpen.value = false })
 </script>
 
 <template>
@@ -51,7 +58,25 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
         <button class="shell__burger" aria-label="Menu" @click="sidebarOpen = !sidebarOpen"><Menu :size="22" /></button>
         <span class="shell__breadcrumb">{{ workspaceLabel }}</span>
         <div class="shell__topbar-right">
-          <button class="shell__iconbtn" aria-label="Notificações"><Bell :size="20" /></button>
+          <div ref="notifRoot" class="shell__notif-wrap">
+            <button
+              class="shell__iconbtn"
+              aria-label="Notificações"
+              aria-haspopup="menu"
+              :aria-expanded="notifOpen"
+              @click="notifOpen = !notifOpen"
+            >
+              <Bell :size="20" />
+            </button>
+            <div v-if="notifOpen" class="shell__notif-menu" role="menu">
+              <p class="shell__notif-title">Notificações</p>
+              <UiEmptyState
+                :icon="Bell"
+                title="Nada por aqui ainda"
+                description="Em breve você vai receber avisos de candidaturas, convites e atualizações do marketplace por aqui."
+              />
+            </div>
+          </div>
           <div v-if="auth.user" ref="userMenuRoot" class="shell__user-wrap">
             <button
               class="shell__user"
@@ -105,7 +130,15 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
 .shell__burger { display: none; background: none; border: none; }
 .shell__breadcrumb { font-weight: 600; flex: 1; }
 .shell__topbar-right { display: flex; align-items: center; gap: var(--sp-3); }
-.shell__iconbtn { background: none; border: none; color: var(--ink-500); display: flex; }
+.shell__iconbtn { background: none; border: none; color: var(--ink-500); display: flex; cursor: pointer; }
+.shell__notif-wrap { position: relative; }
+.shell__notif-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 50; width: 300px;
+  background: var(--white); border: 1px solid var(--ink-100); border-radius: var(--radius-input);
+  box-shadow: var(--shadow-md); padding: var(--sp-3);
+}
+.shell__notif-title { font-weight: 600; font-size: var(--text-14); margin-bottom: var(--sp-2); }
+.shell__notif-menu :deep(.empty) { padding: var(--sp-6) var(--sp-3); }
 .shell__user-wrap { position: relative; }
 .shell__user { display: flex; align-items: center; gap: var(--sp-2); background: none; border: none; cursor: pointer; }
 .shell__avatar { width: 32px; height: 32px; border-radius: var(--radius-full); object-fit: cover; }
