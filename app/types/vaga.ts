@@ -41,6 +41,10 @@ export interface Vaga {
   updatedAt: string
   /** Só presente em /vagas/me (listMine). Ausente no público. */
   applicationsCount?: number
+  /** T-E03 — só presente em /vagas/me quando allowHunters=true. */
+  hunterInterestsAcceptedCount?: number
+  /** T-E03 — só presente em /vagas/me quando allowHunters=true. */
+  hunterInterestsPendingCount?: number
   /** Carregado em GET /vagas/:slug (findBySlugPublic). */
   company?: VagaCompany | null
 }

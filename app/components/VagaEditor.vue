@@ -4,7 +4,12 @@
 import type { Vaga, PaginatedResult } from '~/types/vaga'
 import { VAGA_SEGMENTS, VAGA_SEGMENT_LABEL, VAGA_TYPE_LABEL, VAGA_WORK_MODE_LABEL } from '~/types/vaga'
 
-const props = defineProps<{ vagaId?: string }>()
+// T-E03/04 — basePath permite reusar este editor no workspace Empresa
+// (/app/empresa/vagas/...) sem duplicar o componente; default mantém o
+// comportamento original do hunter.
+const props = withDefaults(defineProps<{ vagaId?: string, basePath?: string }>(), {
+  basePath: '/app/hunter/vagas',
+})
 
 const api = useApi()
 const toast = useToast()
@@ -202,7 +207,7 @@ function compartilharLinkedIn() {
 }
 function irPipeline() {
   successOpen.value = false
-  navigateTo(`/app/hunter/vagas/${id.value}`)
+  navigateTo(`${props.basePath}/${id.value}`)
 }
 </script>
 

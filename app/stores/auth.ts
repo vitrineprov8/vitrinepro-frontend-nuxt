@@ -22,6 +22,19 @@ export interface User {
   companyName: string | null
   isVisible: boolean
   activeContextTeamId: string | null
+  bio: string | null
+  location: string | null
+  phone: string | null
+  website: string | null
+  profession: string | null
+  socialLinks: Record<string, string> | null
+  /** T-E08 — capa/banner da página da empresa (reusa o mesmo campo do perfil de candidato/hunter). */
+  bannerUrl: string | null
+  /** T-E08 — Página da Empresa. */
+  companyIndustry: string | null
+  companyLogoUrl: string | null
+  /** B4 — RN-NOVA-03: preferência de mascaramento de contato de candidatos de hunter. */
+  hunterContactRevealStageOrder: number | null
   /** B1 — personas ativas da conta; null/[] em contas antigas pré-migração. */
   personas: Persona[] | null
   /** B5 — chips de especialidade e anos de experiência do hunter. */
