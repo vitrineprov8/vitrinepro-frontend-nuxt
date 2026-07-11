@@ -47,12 +47,27 @@ export interface Vaga {
   hunterInterestsPendingCount?: number
   /** Carregado em GET /vagas/:slug (findBySlugPublic). */
   company?: VagaCompany | null
+  /** T-T03 — Consultoria: cliente (Company) atribuído à vaga, se houver. */
+  companyId?: string | null
+  /** T-T03 — Consultoria: membro do time responsável pela vaga. */
+  assignedToId?: string | null
+  /** T-T03 — presente em GET /vagas/me (join enxuto, sem passwordHash). */
+  assignedTo?: VagaAssignee | null
 }
 
 export interface VagaCompany {
   id: string
   name: string
   logoUrl: string | null
+}
+
+/** T-T03 — Consultoria: membro do time atribuído como responsável pela vaga. */
+export interface VagaAssignee {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  username: string | null
+  avatarUrl: string | null
 }
 
 /** B6 — projeção enxuta de GET /empresas/:slug (vagasAbertas). Não é o Vaga completo. */

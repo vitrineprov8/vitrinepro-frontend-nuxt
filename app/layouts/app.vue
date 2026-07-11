@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Layout do app — sidebar escura + topbar (design-spec/00 §3.9)
 // navEntries definidos por workspace via composable useWorkspaceNav (cada workspace estende)
-import { Menu, Bell, ChevronDown, User, LogOut, Check } from 'lucide-vue-next'
+import { Menu, Bell, ChevronDown, User, LogOut, Check, Building2 } from 'lucide-vue-next'
 import type { NotificationItem, NotificationListResponse } from '~/types/notification'
+import type { AccessibleTeam } from '~/types/team'
 
 const auth = useAuthStore()
 const api = useApi()
@@ -14,10 +15,47 @@ const router = useRouter()
 const nav = useState<{ label: string, to: string, icon?: unknown }[]>('workspace-nav', () => [])
 const workspaceLabel = useState<string>('workspace-label', () => 'Painel')
 
+// Item ativo do menu lateral. Não basta checar `route.path.startsWith(item.to)`
+// por item isoladamente: o item "Início" de cada workspace aponta pra raiz
+// (ex.: /app/consultoria), que é prefixo de TODAS as outras rotas do mesmo
+// workspace (/app/consultoria/clientes etc.), então ficava marcado como ativo
+// simultaneamente com a página atual. Em vez disso, escolhemos o único item
+// cujo `to` é o prefixo mais longo que bate com a rota atual.
+const activeNavTo = computed(() => {
+  const matches = nav.value.filter(item => route.path === item.to || route.path.startsWith(`${item.to}/`))
+  if (!matches.length) return null
+  return matches.reduce((longest, item) => (item.to.length > longest.to.length ? item : longest)).to
+})
+
 // F1 — menu do avatar (design-spec 00 §3.9): dropdown com Minha conta / Sair
 const userMenuOpen = ref(false)
 const userMenuRoot = ref<HTMLElement | null>(null)
 onClickOutside(userMenuRoot, () => { userMenuOpen.value = false })
+
+// F4/T-T01 — Entry point mínimo para o Workspace Consultoria: em vez do
+// WorkspaceSwitcher completo do design-spec (dropdown com Candidato/Hunter/
+// Consultoria/Empresa/Admin), mostramos um único item "Consultoria" no menu
+// do avatar quando o usuário tem pelo menos um time acessível (dono ou
+// membro ativo). Ao clicar, ativa o contexto do time (RN 00 §3.9 — trocar
+// ANTES de navegar) e vai para o workspace. Com >1 time, usa o primeiro —
+// um switcher completo fica fora do escopo v1 (caso raro: recrutador em
+// múltiplas consultorias simultaneamente).
+const accessibleTeams = ref<AccessibleTeam[]>([])
+async function loadAccessibleTeams() {
+  try {
+    accessibleTeams.value = await api.get<AccessibleTeam[]>('/me/team/accessible')
+  }
+  catch {
+    accessibleTeams.value = []
+  }
+}
+async function goToConsultoria() {
+  userMenuOpen.value = false
+  const team = accessibleTeams.value[0]
+  if (!team) return
+  await auth.setActiveContext(team.id)
+  await router.push('/app/consultoria')
+}
 
 // F5 — sino de notificações. B13 (tabela `notifications` + endpoints) já
 // existe no backend — carregamos a lista real + unreadCount pro badge do sino.
@@ -47,8 +85,8 @@ async function loadNotifications() {
 }
 
 // Badge do sino já aparece assim que o usuário loga, não só ao abrir o popover.
-onMounted(() => { auth.fetchMe(); if (auth.user) loadNotifications() })
-watch(() => auth.user, (u) => { if (u) loadNotifications() })
+onMounted(() => { auth.fetchMe(); if (auth.user) { loadNotifications(); loadAccessibleTeams() } })
+watch(() => auth.user, (u) => { if (u) { loadNotifications(); loadAccessibleTeams() } })
 watch(notifOpen, (open) => { if (open) loadNotifications() })
 
 async function marcarLida(n: NotificationItem) {
@@ -106,7 +144,7 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
       <nav class="shell__nav">
         <NuxtLink
           v-for="item in nav" :key="item.to" :to="item.to"
-          class="shell__nav-item" :class="{ active: route.path.startsWith(item.to) }"
+          class="shell__nav-item" :class="{ active: item.to === activeNavTo }"
         >
           {{ item.label }}
         </NuxtLink>
@@ -180,6 +218,9 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
               <NuxtLink :to="accountLink" class="shell__user-menu-item" role="menuitem" @click="userMenuOpen = false">
                 <User :size="16" /> Minha conta
               </NuxtLink>
+              <button v-if="accessibleTeams.length" class="shell__user-menu-item" role="menuitem" @click="goToConsultoria">
+                <Building2 :size="16" /> Consultoria
+              </button>
               <button class="shell__user-menu-item shell__user-menu-item--danger" role="menuitem" @click="onLogout">
                 <LogOut :size="16" /> Sair
               </button>

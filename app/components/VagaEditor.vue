@@ -7,8 +7,11 @@ import { VAGA_SEGMENTS, VAGA_SEGMENT_LABEL, VAGA_TYPE_LABEL, VAGA_WORK_MODE_LABE
 // T-E03/04 — basePath permite reusar este editor no workspace Empresa
 // (/app/empresa/vagas/...) sem duplicar o componente; default mantém o
 // comportamento original do hunter.
-const props = withDefaults(defineProps<{ vagaId?: string, basePath?: string }>(), {
+// T-T03 — showClientSelector liga o card "Cliente" (Company) + exibe o badge
+// "Publicando como {Consultoria}" — usado só pelo workspace Consultoria.
+const props = withDefaults(defineProps<{ vagaId?: string, basePath?: string, showClientSelector?: boolean }>(), {
   basePath: '/app/hunter/vagas',
+  showClientSelector: false,
 })
 
 const api = useApi()
@@ -36,6 +39,18 @@ const feePercent = ref<number | null>(null)
 const feeAmount = ref<number | null>(null)
 const maxHunters = ref<number | null>(5)
 const exclusivityDays = ref<number | null>(90)
+const companyId = ref<string | null>(null)
+
+// T-T03 — Consultoria: lista de clientes (Company) do time p/ o select +
+// badge "Publicando como {Consultoria}" no topo do editor.
+const auth = useAuthStore()
+const teamLabel = computed(() => auth.user?.firstName ? `Time de ${auth.user.firstName}` : 'sua consultoria')
+const companyOptions = ref<{ value: string, label: string }[]>([])
+if (props.showClientSelector) {
+  api.get<Array<{ id: string, name: string }>>('/companies').then((companies) => {
+    companyOptions.value = companies.map(c => ({ value: c.id, label: c.name }))
+  }).catch(() => { companyOptions.value = [] })
+}
 
 // UiInput só modela string (modelValue: string) — proxies numéricos para os
 // campos de fee/limites (v-model.number não é suportado por componentes custom).
@@ -73,6 +88,7 @@ if (props.vagaId) {
     feeAmount.value = v.feeAmount != null ? Number(v.feeAmount) : null
     maxHunters.value = v.maxHunters ?? 5
     exclusivityDays.value = v.exclusivityDays ?? 90
+    companyId.value = v.companyId ?? null
   }
 }
 
@@ -96,6 +112,7 @@ function payload() {
     feeAmount: allowHunters.value ? (feeAmount.value ?? undefined) : undefined,
     maxHunters: allowHunters.value ? (maxHunters.value ?? undefined) : undefined,
     exclusivityDays: allowHunters.value ? (exclusivityDays.value ?? undefined) : undefined,
+    companyId: props.showClientSelector ? (companyId.value ?? undefined) : undefined,
   }
 }
 
@@ -128,7 +145,7 @@ async function save(): Promise<boolean> {
 
 // Autosave (debounce) — só depois que existe um rascunho.
 let timer: ReturnType<typeof setTimeout> | null = null
-watch([title, description, requirements, benefits, location, type, workMode, segment, salaryMin, salaryMax, deadline, contactEmail, allowHunters, hunterContactPhone, feePercent, feeAmount, maxHunters, exclusivityDays], () => {
+watch([title, description, requirements, benefits, location, type, workMode, segment, salaryMin, salaryMax, deadline, contactEmail, allowHunters, hunterContactPhone, feePercent, feeAmount, maxHunters, exclusivityDays, companyId], () => {
   if (!id.value) return
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => { save() }, 1200)
@@ -218,6 +235,7 @@ function irPipeline() {
       <UiBadge :variant="status === 'PUBLISHED' ? 'success' : 'neutral'">
         {{ status === 'PUBLISHED' ? 'Publicada' : status === 'CLOSED' ? 'Encerrada' : 'Rascunho' }}
       </UiBadge>
+      <UiBadge v-if="props.showClientSelector" variant="purple">Publicando como {{ teamLabel }}</UiBadge>
     </header>
 
     <div class="editor__grid">
@@ -245,6 +263,14 @@ function irPipeline() {
 
       <!-- Lateral -->
       <aside class="editor__side">
+        <UiCard v-if="props.showClientSelector">
+          <h3 class="editor__card-title">Cliente</h3>
+          <UiSelect
+            v-model="companyId" :options="companyOptions" placeholder="Selecionar cliente"
+            helper="Vincule a vaga a um cliente da carteira do time (opcional)."
+          />
+        </UiCard>
+
         <UiCard>
           <h3 class="editor__card-title">Detalhes</h3>
           <UiInput v-model="location" label="Local" placeholder="Cidade, UF ou Remoto" />
