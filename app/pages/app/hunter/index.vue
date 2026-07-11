@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// T-H02 — Início "Minha mesa" do hunter. Slots reais (/vagas/me/usage); KPIs/mesa mock (B12).
+// T-H02 — Início "Minha mesa" do hunter. Slots reais (/vagas/me/usage); KPIs reais (B12, GET /stats/hunter).
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useHunterWorkspace()
 useSeoMeta({ title: 'Início — Hunter' })
@@ -20,13 +20,24 @@ const renovaEm = computed(() => usage.value?.cycleEnd
   ? new Date(usage.value.cycleEnd).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
   : null)
 
-// KPIs e "minha mesa" — mock até existirem agregações (B12).
-const kpis = [
-  { label: 'Ganhos no mês', value: 'R$ 0' },
-  { label: 'Placements em andamento', value: '0' },
-  { label: 'Candidatos em processos', value: '0' },
-  { label: 'Indicações aguardando', value: '0' },
-]
+const fmtBRL = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
+
+interface HunterDashboardStats {
+  ganhosNoMes: number
+  placementsEmAndamento: number
+  candidatosEmProcessosAtivos: number
+  indicacoesAguardandoResposta: number
+}
+const { data: stats, pending: statsPending } = await useAsyncData('hunter-dashboard-stats', () =>
+  api.get<HunterDashboardStats>('/stats/hunter').catch(() => null))
+
+const kpis = computed(() => [
+  { label: 'Ganhos no mês', value: stats.value ? fmtBRL(stats.value.ganhosNoMes) : 'R$ 0' },
+  { label: 'Placements em andamento', value: String(stats.value?.placementsEmAndamento ?? 0) },
+  { label: 'Candidatos em processos', value: String(stats.value?.candidatosEmProcessosAtivos ?? 0) },
+  { label: 'Indicações aguardando', value: String(stats.value?.indicacoesAguardandoResposta ?? 0) },
+])
+
 const mesa = [
   { texto: 'Crie sua primeira vaga para começar a receber candidatos.', cta: 'Nova vaga', to: '/app/hunter/vagas/nova' },
   { texto: 'Organize seus candidatos no pipeline de cada vaga.', cta: 'Ver minhas vagas', to: '/app/hunter/vagas' },
@@ -37,9 +48,9 @@ const mesa = [
   <div class="inicio">
     <h1 class="inicio__title">Olá, {{ auth.user?.firstName || 'hunter' }} 👋</h1>
 
-    <!-- KPIs (mock) -->
+    <!-- KPIs reais (B12) -->
     <div class="inicio__kpis">
-      <UiKpiCard v-for="k in kpis" :key="k.label" :label="k.label" :value="k.value" />
+      <UiKpiCard v-for="k in kpis" :key="k.label" :label="k.label" :value="k.value" :loading="statsPending" />
     </div>
 
     <div class="inicio__cols">

@@ -94,6 +94,7 @@ useSeoMeta({
           <div class="dir-card__metrics">
             <span>{{ h.metrics.totalIndicacoes }} indicações</span>
             <span v-if="h.metrics.taxaAproveitamento != null">{{ h.metrics.taxaAproveitamento }}% de aproveitamento</span>
+            <span v-if="h.metrics.avaliacaoMedia != null">{{ h.metrics.avaliacaoMedia }} ★ ({{ h.metrics.totalReviews }})</span>
           </div>
         </UiCard>
       </NuxtLink>

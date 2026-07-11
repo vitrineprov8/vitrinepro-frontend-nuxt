@@ -67,8 +67,11 @@ useSeoMeta({
             <span class="hp__metric-label">Tempo médio até 1ª abordagem</span>
           </UiCard>
           <UiCard class="hp__metric">
-            <span class="hp__metric-value">{{ hunter.metrics.avaliacaoMedia != null ? hunter.metrics.avaliacaoMedia : '—' }}</span>
-            <span class="hp__metric-label">Avaliação média</span>
+            <span class="hp__metric-value">{{ hunter.metrics.avaliacaoMedia != null ? `${hunter.metrics.avaliacaoMedia} ★` : '—' }}</span>
+            <span class="hp__metric-label">
+              Avaliação média
+              <template v-if="hunter.metrics.totalReviews > 0">({{ hunter.metrics.totalReviews }} {{ hunter.metrics.totalReviews === 1 ? 'avaliação' : 'avaliações' }})</template>
+            </span>
           </UiCard>
         </div>
       </section>

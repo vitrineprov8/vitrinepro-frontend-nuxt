@@ -7,7 +7,10 @@ export interface HunterMetrics {
   totalIndicacoes: number
   taxaAproveitamento: number | null
   tempoMedioAteAbordagemDias: number | null
+  /** Média real 1–5 das avaliações de empresas (B10, RN-NOVA-07). */
   avaliacaoMedia: number | null
+  /** Total de avaliações recebidas (B10). */
+  totalReviews: number
 }
 
 /** Resposta de GET /hunters — HuntersService.listDirectory não usa o shape { data, lastPage } do PaginatedResult comum. */
