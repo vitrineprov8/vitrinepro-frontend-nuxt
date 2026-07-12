@@ -3,7 +3,7 @@
 // cliente" + modal "Atribuir recrutadores". RECRUITER vê só os atribuídos,
 // somente leitura (sem botões de criação/edição — RN-COMP-03).
 import { Plus, Globe } from 'lucide-vue-next'
-import type { Company, TeamMember } from '~/types/team'
+import type { Company, TeamMember, Team } from '~/types/team'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useConsultoriaWorkspace()
@@ -11,6 +11,7 @@ useSeoMeta({ title: 'Clientes' })
 
 const api = useApi()
 const toast = useToast()
+const auth = useAuthStore()
 
 const { data: companies, pending, refresh } = await useAsyncData('consultoria-clientes', () =>
   api.get<Company[]>('/companies').catch(() => []))
@@ -21,11 +22,19 @@ const recruiterOptions = computed(() => (members.value ?? [])
   .filter(m => m.userId && m.role === 'RECRUITER')
   .map(m => ({ value: m.userId as string, label: `${m.user?.firstName ?? ''} ${m.user?.lastName ?? ''}`.trim() || 'Recrutador' })))
 
-// Só recruiters sem nenhuma company atribuída ainda == visão read-only.
-// RN-COMP-03: se o backend devolver 403 no create/update, tratamos como
-// somente leitura (RECRUITER). Não temos o papel do ator no front ainda
-// aqui (não é persistido em auth.user) — o botão aparece, mas o backend
-// bloqueia com toast de erro claro se a conta for RECRUITER.
+// RN-COMP-03 — RECRUITER tem acesso somente leitura às empresas (o backend
+// já bloqueia create/update/delete/recruiters com 403 "Recrutadores têm
+// acesso somente leitura às empresas."). Aqui escondemos os controles de
+// escrita para esse papel, resolvendo o papel do ator da mesma forma que
+// membros/index.vue (T-T06): via GET /me/team, comparando ownerId/members.
+const { data: team } = await useAsyncData('consultoria-clientes-team', () =>
+  api.get<Team>('/me/team').catch(() => null))
+const canManageClients = computed(() => {
+  if (!team.value || !auth.user) return true
+  if (team.value.ownerId === auth.user.id) return true
+  const role = team.value.members?.find(m => m.userId === auth.user!.id)?.role
+  return role === 'OWNER' || role === 'MANAGER'
+})
 
 // --- Modal criar/editar cliente ---
 const modalOpen = ref(false)
@@ -124,7 +133,7 @@ async function confirmarExclusao() {
   <div class="clientes">
     <header class="clientes__header">
       <h1>Clientes</h1>
-      <UiButton @click="abrirNovo"><Plus :size="16" /> Novo cliente</UiButton>
+      <UiButton v-if="canManageClients" @click="abrirNovo"><Plus :size="16" /> Novo cliente</UiButton>
     </header>
 
     <div v-if="pending" class="clientes__skel">
@@ -133,10 +142,10 @@ async function confirmarExclusao() {
 
     <UiEmptyState
       v-else-if="!companies?.length"
-      title="Cadastre seu primeiro cliente"
-      description="Organize as vagas por cliente para acompanhar melhor cada processo."
+      :title="canManageClients ? 'Cadastre seu primeiro cliente' : 'Você ainda não foi atribuído a nenhum cliente'"
+      :description="canManageClients ? 'Organize as vagas por cliente para acompanhar melhor cada processo.' : 'Fale com seu gestor para ser atribuído a um cliente.'"
     >
-      <template #action>
+      <template v-if="canManageClients" #action>
         <UiButton @click="abrirNovo">Novo cliente</UiButton>
       </template>
     </UiEmptyState>
@@ -145,7 +154,7 @@ async function confirmarExclusao() {
       <UiCard v-for="c in companies" :key="c.id" class="cliente-card">
         <div class="cliente-card__top">
           <UiAvatar :src="c.logoUrl" :name="c.name" size="lg" />
-          <details class="menu">
+          <details v-if="canManageClients" class="menu">
             <summary aria-label="Ações">⋯</summary>
             <div class="menu__list">
               <button @click="abrirEditar(c)">Editar</button>
