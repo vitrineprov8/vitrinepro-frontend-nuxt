@@ -141,7 +141,7 @@ function onStagesSaved(newStages: PipelineStage[]) {
     </div>
 
     <CandidateDrawer
-      :open="!!drawerApp" :application="drawerApp" :stages="stages"
+      :open="!!drawerApp" :application="drawerApp" :stages="stages" :vaga="vaga"
       @close="drawerApp = null" @changed="refresh"
     />
     <PipelineStagesModal

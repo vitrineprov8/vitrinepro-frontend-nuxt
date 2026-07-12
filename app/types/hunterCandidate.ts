@@ -1,4 +1,5 @@
 // Tipos do B3 — pool de candidatos do hunter (T-H08). Contrato: ../vitrinepro-bakend/src/hunter-candidates.
+import type { PlacementSummary } from './placement'
 
 export type ConsentStatus = 'PENDING' | 'GRANTED' | 'DECLINED'
 
@@ -37,6 +38,8 @@ export interface HunterSubmission {
   createdAt: string
   vaga?: { id: string, slug: string, title: string, status: string } | null
   hunterCandidate?: { id: string, fullName: string } | null
+  /** B9/Placement — presente quando essa submissão virou uma contratação. */
+  placement?: PlacementSummary | null
 }
 
 export const CONSENT_LABEL: Record<ConsentStatus, string> = {

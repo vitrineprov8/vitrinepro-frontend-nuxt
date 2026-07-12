@@ -1,6 +1,12 @@
 <script setup lang="ts">
 // Drawer do candidato (T-H05): info, mensagem, CV, mover etapa, rejeitar, nota da etapa, histórico.
+// Placement (P1/P3/P4 — design-spec/06 §P): "Marcar como contratado", status/timeline
+// e "Candidato saiu" ficam disponíveis aqui quando a vaga é conhecida (prop `vaga`).
+import { Trophy } from 'lucide-vue-next'
 import type { PipelineStage } from '~/components/PipelineStagesModal.vue'
+import type { MarkHiredVaga } from '~/components/MarkHiredModal.vue'
+import type { PlacementSummary } from '~/types/placement'
+import { PLACEMENT_STATUS_LABEL, placementStatusVariant } from '~/types/placement'
 
 export interface Application {
   id: string
@@ -23,10 +29,12 @@ export interface Application {
   createdAt: string
   cv: { id: string, label: string | null, fileUrl: string | null } | null
   user: { id: string, firstName: string, lastName: string, username: string | null, avatarUrl: string | null } | null
+  /** B9/Placement — presente quando a candidatura já virou uma contratação. */
+  placement?: PlacementSummary | null
 }
 interface HistoryItem { stage: string, enteredAt: string, byUserName: string, note: string | null }
 
-const props = defineProps<{ open: boolean, application: Application | null, stages: PipelineStage[] }>()
+const props = defineProps<{ open: boolean, application: Application | null, stages: PipelineStage[], vaga?: MarkHiredVaga | null }>()
 const emit = defineEmits<{ close: [], changed: [] }>()
 
 const api = useApi()
@@ -44,6 +52,22 @@ const savingNote = ref(false)
 const moving = ref(false)
 const shareOpen = ref(false)
 const downloadingPdf = ref(false)
+
+// Placement (P1/P3/P4)
+const hireModalOpen = ref(false)
+const departureModalOpen = ref(false)
+const timelineExpanded = ref(false)
+
+function onHired(placement: { id: string, status: string }) {
+  if (!props.application) return
+  props.application.placement = { id: placement.id, status: placement.status as PlacementSummary['status'] }
+  emit('changed')
+}
+function onDeparted() {
+  if (!props.application?.placement) return
+  props.application.placement = { ...props.application.placement, status: 'GUARANTEE_BROKEN' }
+  emit('changed')
+}
 
 async function baixarPdf() {
   if (!props.application) return
@@ -80,6 +104,7 @@ watch(() => props.open, async (o) => {
   nota.value = existing?.observacoes ?? ''
   notaScore.value = existing?.nota ?? null
   history.value = []
+  timelineExpanded.value = false
   try {
     history.value = await api.get<HistoryItem[]>(`/applications/${props.application.id}/history`)
   }
@@ -176,6 +201,31 @@ function fmt(d: string) {
         </div>
       </section>
 
+      <!-- Contratação / Placement (P1, P3, P4) -->
+      <section v-if="!application.isRejected" class="cd__section">
+        <span class="cd__label">Contratação</span>
+        <div v-if="!application.placement" class="cd__hire">
+          <UiButton size="sm" variant="secondary" @click="hireModalOpen = true">
+            <Trophy :size="16" /> Marcar como contratado
+          </UiButton>
+        </div>
+        <div v-else class="cd__placement">
+          <div class="cd__placement-row">
+            <UiBadge :variant="placementStatusVariant(application.placement.status)">{{ PLACEMENT_STATUS_LABEL[application.placement.status] }}</UiBadge>
+            <UiButton size="sm" variant="ghost" @click="timelineExpanded = !timelineExpanded">
+              {{ timelineExpanded ? 'Ocultar linha do tempo' : 'Ver linha do tempo' }}
+            </UiButton>
+          </div>
+          <PlacementTimeline v-if="timelineExpanded" :placement-id="application.placement.id" />
+          <UiButton
+            v-if="application.placement.status === 'CONFIRMED'"
+            size="sm" variant="danger" @click="departureModalOpen = true"
+          >
+            Candidato saiu
+          </UiButton>
+        </div>
+      </section>
+
       <!-- Mover / rejeitar -->
       <section class="cd__section">
         <span class="cd__label">Mover de etapa</span>
@@ -215,6 +265,16 @@ function fmt(d: string) {
     </div>
 
     <ShareProcessModal v-if="application" :open="shareOpen" :application-id="application.id" @close="shareOpen = false" />
+
+    <MarkHiredModal
+      :open="hireModalOpen" :application="application" :vaga="vaga ?? null"
+      @close="hireModalOpen = false" @hired="onHired"
+    />
+    <ReportDepartureModal
+      :open="departureModalOpen" :placement-id="application?.placement?.id ?? null"
+      :candidate-name="application?.snapshotFullName"
+      @close="departureModalOpen = false" @reported="onDeparted"
+    />
   </UiDrawer>
 </template>
 
@@ -248,4 +308,7 @@ function fmt(d: string) {
 .cd__hist-meta { font-size: var(--text-12); color: var(--ink-500); }
 .cd__timeline p { font-size: var(--text-13); color: var(--ink-700); margin-top: 2px; }
 .cd__empty { color: var(--ink-500); font-size: var(--text-13); }
+.cd__hire { display: flex; }
+.cd__placement { display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-start; }
+.cd__placement-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 </style>

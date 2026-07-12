@@ -3,6 +3,7 @@
 // Dados reais: GET /hunter-candidates + GET /hunter-candidates/submissions (B3).
 import type { HunterCandidate, HunterSubmission, ConsentRequestResult } from '~/types/hunterCandidate'
 import { CONSENT_LABEL, CONSENT_VARIANT } from '~/types/hunterCandidate'
+import { PLACEMENT_STATUS_LABEL, placementStatusVariant } from '~/types/placement'
 
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useHunterWorkspace()
@@ -138,6 +139,53 @@ function menuAction(kind: 'perfil' | 'submeter' | 'consent' | 'remover') {
 // Fecha o menu ao rolar (posição é fixa) ou apertar Esc
 onKeyStroke('Escape', closeMenu)
 useEventListener(window, 'scroll', closeMenu, true)
+
+// ── P2 — confirmação bilateral do placement (design-spec/06 §P) ──────────────
+// Só existe quando a submissão desse hunter foi marcada como contratada pela
+// empresa (application.placement, vindo agora de listSubmissions()).
+const confirmingId = ref<string | null>(null)
+const contestingId = ref<string | null>(null)
+const contestReason = ref('')
+const sendingContest = ref(false)
+const expandedTimelineId = ref<string | null>(null)
+
+async function confirmarPlacement(s: HunterSubmission) {
+  if (!s.placement) return
+  confirmingId.value = s.placement.id
+  try {
+    await api.post(`/placements/${s.placement.id}/confirm`)
+    toast.success('Placement confirmado! A garantia de 90 dias começou a contar.')
+    s.placement = { ...s.placement, status: 'CONFIRMED' }
+    await refreshSubs()
+  }
+  catch (e) {
+    const err = e as { message?: string }
+    toast.error(err.message || 'Não foi possível confirmar o placement.')
+  }
+  finally { confirmingId.value = null }
+}
+
+function abrirContestacao(s: HunterSubmission) {
+  contestingId.value = s.placement?.id ?? null
+  contestReason.value = ''
+}
+
+async function enviarContestacao(s: HunterSubmission) {
+  if (!s.placement || !contestReason.value.trim()) return
+  sendingContest.value = true
+  try {
+    await api.post(`/placements/${s.placement.id}/contest`, { reason: contestReason.value.trim() })
+    toast.info('Contestação enviada. Um administrador vai revisar.')
+    s.placement = { ...s.placement, status: 'DISPUTED' }
+    contestingId.value = null
+    await refreshSubs()
+  }
+  catch (e) {
+    const err = e as { message?: string }
+    toast.error(err.message || 'Não foi possível enviar a contestação.')
+  }
+  finally { sendingContest.value = false }
+}
 </script>
 
 <template>
@@ -239,11 +287,42 @@ useEventListener(window, 'scroll', closeMenu, true)
         <div class="detail__history">
           <h3>Histórico de processos</h3>
           <ul v-if="selectedSubs.length" class="detail__proc">
-            <li v-for="s in selectedSubs" :key="s.id">
-              <span>{{ s.vaga?.title || 'Vaga' }}</span>
-              <UiBadge :variant="s.isRejected ? 'danger' : 'info'">
-                {{ s.isRejected ? 'Recusado' : s.pipelineStage }}
-              </UiBadge>
+            <li v-for="s in selectedSubs" :key="s.id" class="detail__proc-item">
+              <div class="detail__proc-row">
+                <span>{{ s.vaga?.title || 'Vaga' }}</span>
+                <UiBadge v-if="s.placement" :variant="placementStatusVariant(s.placement.status)">
+                  {{ PLACEMENT_STATUS_LABEL[s.placement.status] }}
+                </UiBadge>
+                <UiBadge v-else :variant="s.isRejected ? 'danger' : 'info'">
+                  {{ s.isRejected ? 'Recusado' : s.pipelineStage }}
+                </UiBadge>
+              </div>
+
+              <!-- P2 — confirmação bilateral (só quando aguardando o hunter) -->
+              <div v-if="s.placement?.status === 'HIRED'" class="detail__placement-actions">
+                <p class="cand__muted">
+                  Contratação registrada. Confirme para liberar a garantia de 90 dias — se você não
+                  responder, o placement é confirmado automaticamente em até 7 dias.
+                </p>
+                <div class="detail__placement-btns">
+                  <UiButton size="sm" :loading="confirmingId === s.placement.id" @click="confirmarPlacement(s)">Confirmar</UiButton>
+                  <UiButton size="sm" variant="secondary" @click="abrirContestacao(s)">Contestar</UiButton>
+                </div>
+                <div v-if="contestingId === s.placement.id" class="detail__contest">
+                  <textarea v-model="contestReason" rows="3" placeholder="Motivo da contestação..." class="detail__textarea" />
+                  <div class="detail__placement-btns">
+                    <UiButton size="sm" variant="ghost" @click="contestingId = null">Cancelar</UiButton>
+                    <UiButton size="sm" variant="danger" :loading="sendingContest" :disabled="!contestReason.trim()" @click="enviarContestacao(s)">Enviar contestação</UiButton>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="s.placement" class="detail__placement-actions">
+                <UiButton size="sm" variant="ghost" @click="expandedTimelineId = expandedTimelineId === s.placement.id ? null : s.placement.id">
+                  {{ expandedTimelineId === s.placement.id ? 'Ocultar linha do tempo' : 'Ver linha do tempo' }}
+                </UiButton>
+                <PlacementTimeline v-if="expandedTimelineId === s.placement.id" :placement-id="s.placement.id" />
+              </div>
             </li>
           </ul>
           <p v-else class="cand__muted">Ainda não foi submetido a nenhuma vaga.</p>
@@ -332,7 +411,13 @@ useEventListener(window, 'scroll', closeMenu, true)
 .detail__notes p { font-size: var(--text-14); color: var(--ink-700); white-space: pre-wrap; }
 .detail__consent { background: var(--amber-50, var(--ink-100)); border: 1px solid var(--ink-100); border-radius: var(--radius-input); padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--text-13); }
 .detail__proc { list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
-.detail__proc li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); font-size: var(--text-14); padding: var(--sp-2) 0; border-bottom: 1px solid var(--ink-100); }
+.detail__proc-item { display: flex; flex-direction: column; gap: var(--sp-2); font-size: var(--text-14); padding: var(--sp-3) 0; border-bottom: 1px solid var(--ink-100); }
+.detail__proc-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.detail__placement-actions { display: flex; flex-direction: column; gap: var(--sp-2); background: var(--ink-100); border-radius: var(--radius-input); padding: var(--sp-3); }
+.detail__placement-btns { display: flex; gap: var(--sp-2); }
+.detail__contest { display: flex; flex-direction: column; gap: var(--sp-2); }
+.detail__textarea { width: 100%; border: 1px solid var(--ink-300); border-radius: var(--radius-input); padding: var(--sp-3); font-family: var(--font-ui); font-size: var(--text-14); resize: vertical; }
+.detail__textarea:focus { outline: none; border-color: var(--brand-600); }
 @media (max-width: 768px) {
   .cand__header { flex-direction: column; }
   .detail__grid { grid-template-columns: 1fr; }

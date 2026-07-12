@@ -64,8 +64,13 @@ const props = defineProps<{
 .stepper__item:not(.stepper__item--current):not(.stepper__item--done) .stepper__label { color: var(--ink-500); font-weight: 500; }
 .stepper__description { font-size: var(--text-12); color: var(--ink-500); }
 .stepper__connector {
+  /* z-index: -1 (não 0) — um bloco absolute com z-index:0/auto entra no
+     mesmo nível de empilhamento dos descendentes posicionados e pinta DEPOIS
+     do texto não-posicionado do próprio item (.stepper__text), cobrindo o
+     label com um risco horizontal quando a descrição é curta. Negativo
+     garante que a linha pinte atrás do texto (achado ao validar PlacementTimeline). */
   position: absolute; top: 13px; left: 28px; right: calc(-1 * var(--sp-2));
-  height: 2px; background: var(--ink-300); z-index: 0;
+  height: 2px; background: var(--ink-300); z-index: -1;
 }
 .stepper__item--done .stepper__connector { background: var(--brand-600); }
 
