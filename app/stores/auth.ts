@@ -45,6 +45,8 @@ export interface User {
   verificationRejectionReason: string | null
   verificationDocs: VerificationDocument[] | null
   verificationLinkedinUrl: string | null
+  /** B17 — verificação do e-mail de cadastro (Conta > Dados de acesso). */
+  emailVerified: boolean
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -146,5 +148,13 @@ export const useAuthStore = defineStore('auth', () => {
     await api.post(`/auth/reset-password/${token}`, { password })
   }
 
-  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword, activatePersona }
+  /**
+   * Conta/Dados de acesso — troca de senha estando logado (exige a atual).
+   * Lança erro (401 senha atual errada, 400 nova senha curta) — o front trata.
+   */
+  async function changePassword(currentPassword: string, newPassword: string) {
+    await api.post('/auth/change-password', { currentPassword, newPassword })
+  }
+
+  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword, changePassword, activatePersona }
 })

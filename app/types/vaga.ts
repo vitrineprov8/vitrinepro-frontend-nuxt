@@ -111,6 +111,14 @@ export interface HunterInterest {
   vaga: HunterInterestVaga | null
 }
 
+// Item de GET /me/saved-vagas (T-C05 — inclui a vaga completa, mesmo se fechada/despublicada)
+export interface SavedVaga {
+  id: string
+  vagaId: string
+  createdAt: string
+  vaga: Vaga
+}
+
 // Currículo do candidato (GET /cv)
 export interface CV {
   id: string
@@ -120,14 +128,32 @@ export interface CV {
   createdAt: string
 }
 
-// Item de GET /me/applications
+// Item de GET /me/applications (T-C04 — inclui snapshot congelado + CV + empresa)
 export interface MyApplication {
   id: string
   pipelineStage: string | null
   isRejected: boolean
   message: string | null
+  snapshotFullName: string
+  snapshotEmail: string
+  snapshotPhone: string | null
+  snapshotLocation: string | null
   createdAt: string
-  vaga: { id: string, slug: string, title: string, status: VagaStatus } | null
+  updatedAt: string
+  cv: { id: string, label: string | null, fileUrl: string | null } | null
+  /** Sem `note`/`byUserId` — notas internas do recrutador não são expostas ao candidato. */
+  stageHistory: Array<{ stage: string, enteredAt: string }>
+  vaga: {
+    id: string
+    slug: string
+    title: string
+    status: VagaStatus
+    location: string | null
+    type: VagaType | null
+    workMode: VagaWorkMode | null
+    deadline: string | null
+    company: { name: string | null, username: string | null } | null
+  } | null
 }
 
 // Forma de paginação do backend (common/paginate.helper.ts)

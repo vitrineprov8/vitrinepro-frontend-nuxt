@@ -1,9 +1,12 @@
 <script setup lang="ts">
 // Layout do app — sidebar escura + topbar (design-spec/00 §3.9)
 // navEntries definidos por workspace via composable useWorkspaceNav (cada workspace estende)
-import { Menu, Bell, ChevronDown, User, LogOut, Check, Building2 } from 'lucide-vue-next'
+import { Menu, Bell, ChevronDown, User, LogOut, Check, Search } from 'lucide-vue-next'
 import type { NotificationItem, NotificationListResponse } from '~/types/notification'
-import type { AccessibleTeam } from '~/types/team'
+
+// Busca global cmd+K (design-spec 00 §3.9) — estado compartilhado com
+// CommandPalette.vue via useState (o atalho de teclado também abre por lá).
+const cmdkOpen = useState<boolean>('cmdk-open', () => false)
 
 const auth = useAuthStore()
 const api = useApi()
@@ -31,31 +34,6 @@ const activeNavTo = computed(() => {
 const userMenuOpen = ref(false)
 const userMenuRoot = ref<HTMLElement | null>(null)
 onClickOutside(userMenuRoot, () => { userMenuOpen.value = false })
-
-// F4/T-T01 — Entry point mínimo para o Workspace Consultoria: em vez do
-// WorkspaceSwitcher completo do design-spec (dropdown com Candidato/Hunter/
-// Consultoria/Empresa/Admin), mostramos um único item "Consultoria" no menu
-// do avatar quando o usuário tem pelo menos um time acessível (dono ou
-// membro ativo). Ao clicar, ativa o contexto do time (RN 00 §3.9 — trocar
-// ANTES de navegar) e vai para o workspace. Com >1 time, usa o primeiro —
-// um switcher completo fica fora do escopo v1 (caso raro: recrutador em
-// múltiplas consultorias simultaneamente).
-const accessibleTeams = ref<AccessibleTeam[]>([])
-async function loadAccessibleTeams() {
-  try {
-    accessibleTeams.value = await api.get<AccessibleTeam[]>('/me/team/accessible')
-  }
-  catch {
-    accessibleTeams.value = []
-  }
-}
-async function goToConsultoria() {
-  userMenuOpen.value = false
-  const team = accessibleTeams.value[0]
-  if (!team) return
-  await auth.setActiveContext(team.id)
-  await router.push('/app/consultoria')
-}
 
 // F5 — sino de notificações. B13 (tabela `notifications` + endpoints) já
 // existe no backend — carregamos a lista real + unreadCount pro badge do sino.
@@ -85,8 +63,8 @@ async function loadNotifications() {
 }
 
 // Badge do sino já aparece assim que o usuário loga, não só ao abrir o popover.
-onMounted(() => { auth.fetchMe(); if (auth.user) { loadNotifications(); loadAccessibleTeams() } })
-watch(() => auth.user, (u) => { if (u) { loadNotifications(); loadAccessibleTeams() } })
+onMounted(() => { auth.fetchMe(); if (auth.user) loadNotifications() })
+watch(() => auth.user, (u) => { if (u) loadNotifications() })
 watch(notifOpen, (open) => { if (open) loadNotifications() })
 
 async function marcarLida(n: NotificationItem) {
@@ -127,14 +105,12 @@ function onLogout() {
   auth.logout()
 }
 
-// "Minha conta" ainda não tem tela dedicada (Fase 4) — manda para o perfil
-// existente do workspace atual em vez de gerar 404 (par de F2).
-const accountLink = computed(() => {
-  if (auth.user?.personas?.includes('HUNTER')) return '/app/hunter/perfil'
-  return '/app'
-})
-
 watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.value = false; notifOpen.value = false })
+
+// §A — tema admin: faixa fina vermelha na topbar quando o workspace é Admin
+// (design-spec 06 §A: "Tema: topbar com faixa fina vermelha 'ADMIN'").
+// Baseado na rota (não em `auth.user.role`) pra não piscar antes do fetchMe().
+const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
 </script>
 
 <template>
@@ -152,10 +128,15 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
     </aside>
 
     <div class="shell__main">
+      <div v-if="isAdminWorkspace" class="shell__admin-strip">ADMIN</div>
       <header class="shell__topbar">
         <button class="shell__burger" aria-label="Menu" @click="sidebarOpen = !sidebarOpen"><Menu :size="22" /></button>
         <span class="shell__breadcrumb">{{ workspaceLabel }}</span>
         <div class="shell__topbar-right">
+          <button class="shell__iconbtn" aria-label="Busca global (Ctrl+K)" title="Busca global (Ctrl+K)" @click="cmdkOpen = true">
+            <Search :size="20" />
+          </button>
+          <WorkspaceSwitcher />
           <div ref="notifRoot" class="shell__notif-wrap">
             <button
               class="shell__iconbtn"
@@ -215,12 +196,9 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
               <ChevronDown :size="16" class="shell__chevron" :class="{ 'shell__chevron--open': userMenuOpen }" />
             </button>
             <div v-if="userMenuOpen" class="shell__user-menu" role="menu">
-              <NuxtLink :to="accountLink" class="shell__user-menu-item" role="menuitem" @click="userMenuOpen = false">
+              <NuxtLink to="/app/conta" class="shell__user-menu-item" role="menuitem" @click="userMenuOpen = false">
                 <User :size="16" /> Minha conta
               </NuxtLink>
-              <button v-if="accessibleTeams.length" class="shell__user-menu-item" role="menuitem" @click="goToConsultoria">
-                <Building2 :size="16" /> Consultoria
-              </button>
               <button class="shell__user-menu-item shell__user-menu-item--danger" role="menuitem" @click="onLogout">
                 <LogOut :size="16" /> Sair
               </button>
@@ -230,6 +208,7 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
       </header>
       <main class="shell__content"><slot /></main>
     </div>
+    <CommandPalette />
   </div>
 </template>
 
@@ -250,6 +229,10 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; userMenuOpen.valu
 .shell__nav-item:hover { background: var(--ink-700); color: var(--white); text-decoration: none; }
 .shell__nav-item.active { background: var(--ink-700); color: var(--white); border-left-color: var(--brand-600); }
 .shell__main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.shell__admin-strip {
+  background: var(--red-500); color: var(--white); flex-shrink: 0; position: sticky; top: 0; z-index: 41;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-align: center; padding: 2px 0;
+}
 .shell__topbar {
   height: var(--topbar-h); background: var(--white); border-bottom: 1px solid var(--ink-300);
   display: flex; align-items: center; gap: var(--sp-4); padding-inline: var(--sp-6);

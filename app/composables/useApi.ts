@@ -48,6 +48,7 @@ export function useApi() {
     get: <T>(path: string, query?: Record<string, unknown>) => request<T>(path, { query }),
     post: <T>(path: string, body?: unknown) => request<T>(path, { method: 'POST', body }),
     patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
-    del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+    // `body` opcional — usado por DELETE /admin/users/:id (B24, exige {reason} no corpo).
+    del: <T>(path: string, body?: unknown) => request<T>(path, { method: 'DELETE', body }),
   }
 }

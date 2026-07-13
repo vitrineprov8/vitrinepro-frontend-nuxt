@@ -23,6 +23,8 @@ interface PortfolioDetail {
   title: string
   subtitle: string | null
   slug: string
+  /** T-C07 — HTML gerado pelo editor rico leve (negrito/itálico/lista/link). */
+  content: { html?: string } | null
   coverImageUrl: string | null
   clientName: string | null
   year: number | null
@@ -94,6 +96,12 @@ const ownerName = computed(() => {
       </a>
     </header>
 
+    <!-- T-C07 — corpo do projeto (editor rico leve: negrito/itálico/lista/link).
+         Conteúdo é autoral do próprio dono via toolbar limitada (não é HTML livre
+         de terceiros) — mesmo nível de confiança de outras áreas já renderizadas
+         como texto do próprio usuário no app. -->
+    <section v-if="item.content?.html" class="pfd__content" v-html="item.content.html" />
+
     <section v-if="item.files?.length" class="pfd__gallery">
       <template v-for="file in item.files" :key="file.id">
         <img v-if="file.fileType === 'IMAGE'" :src="file.fileUrl" :alt="file.caption ?? item.title" class="pfd__image">
@@ -126,6 +134,9 @@ const ownerName = computed(() => {
 .pfd__meta { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; margin: var(--sp-3) 0; font-size: var(--text-14); color: var(--ink-500); }
 .pfd__tags { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
 .pfd__external { font-size: var(--text-14); color: var(--brand-700); font-weight: 600; }
+.pfd__content { margin-top: var(--sp-6); font-size: var(--text-15); line-height: 1.7; color: var(--ink-700); }
+.pfd__content :deep(ul) { padding-left: var(--sp-6); }
+.pfd__content :deep(a) { color: var(--brand-700); }
 .pfd__gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); margin-top: var(--sp-8); }
 .pfd__image { width: 100%; border-radius: var(--radius-card); object-fit: cover; }
 .pfd__pdf {

@@ -63,6 +63,19 @@ function copiar(url: string) {
 function fmt(d: string) {
   return new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+
+// F11 — QR code do link público. Em vez de adicionar uma lib nova (exigiria
+// npm install + restart do servidor, evitado no meio da sessão — mesma
+// decisão já tomada pro RichTextEditor do Portfólio), gera a imagem via a
+// API pública gratuita do goqr.me/qrserver (sem chave, só um <img> apontando
+// pra lá). Renderiza sob demanda (toggle), não uma pra cada link da lista.
+const qrOpenToken = ref<string | null>(null)
+function toggleQr(token: string) {
+  qrOpenToken.value = qrOpenToken.value === token ? null : token
+}
+function qrUrl(url: string) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`
+}
 </script>
 
 <template>
@@ -77,19 +90,27 @@ function fmt(d: string) {
     <p v-if="loading" class="share__empty">Carregando links...</p>
     <div v-else-if="links.length" class="share__links">
       <div v-for="l in links" :key="l.token" class="share__link" :class="{ 'share__link--inactive': !l.isActive }">
-        <div class="share__link-info">
-          <code class="share__url">{{ l.url }}</code>
-          <span class="share__meta">
-            <UiBadge v-if="l.revokedAt" variant="neutral">Revogado</UiBadge>
-            <UiBadge v-else-if="!l.isActive" variant="warning">Expirado</UiBadge>
-            <UiBadge v-else variant="success">Ativo</UiBadge>
-            <span v-if="l.expiresAt"> · expira em {{ fmt(l.expiresAt) }}</span>
-            <span v-else> · nunca expira</span>
-          </span>
+        <div class="share__link-row">
+          <div class="share__link-info">
+            <code class="share__url">{{ l.url }}</code>
+            <span class="share__meta">
+              <UiBadge v-if="l.revokedAt" variant="neutral">Revogado</UiBadge>
+              <UiBadge v-else-if="!l.isActive" variant="warning">Expirado</UiBadge>
+              <UiBadge v-else variant="success">Ativo</UiBadge>
+              <span v-if="l.expiresAt"> · expira em {{ fmt(l.expiresAt) }}</span>
+              <span v-else> · nunca expira</span>
+            </span>
+          </div>
+          <div v-if="l.isActive" class="share__link-actions">
+            <UiButton size="sm" variant="secondary" @click="copiar(l.url)">Copiar</UiButton>
+            <UiButton size="sm" variant="secondary" @click="toggleQr(l.token)">
+              {{ qrOpenToken === l.token ? 'Ocultar QR' : 'QR code' }}
+            </UiButton>
+            <UiButton size="sm" variant="ghost" class="share__revoke" @click="revogar(l.token)">Revogar</UiButton>
+          </div>
         </div>
-        <div v-if="l.isActive" class="share__link-actions">
-          <UiButton size="sm" variant="secondary" @click="copiar(l.url)">Copiar</UiButton>
-          <UiButton size="sm" variant="ghost" class="share__revoke" @click="revogar(l.token)">Revogar</UiButton>
+        <div v-if="qrOpenToken === l.token" class="share__qr">
+          <img :src="qrUrl(l.url)" width="140" height="140" alt="QR code do link público">
         </div>
       </div>
     </div>
@@ -102,11 +123,13 @@ function fmt(d: string) {
 .share__form { display: flex; gap: var(--sp-3); align-items: flex-end; }
 .share__form > :first-child { flex: 1; }
 .share__links { margin-top: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-2); }
-.share__link { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--ink-100); border-radius: var(--radius-input); }
+.share__link { padding: var(--sp-3); border: 1px solid var(--ink-100); border-radius: var(--radius-input); }
 .share__link--inactive { opacity: 0.6; }
+.share__link-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .share__url { font-size: var(--text-12); color: var(--ink-700); word-break: break-all; }
 .share__meta { display: block; font-size: var(--text-12); color: var(--ink-500); margin-top: 2px; }
 .share__link-actions { display: flex; gap: var(--sp-2); flex-shrink: 0; }
 .share__revoke { color: var(--red-500); }
+.share__qr { margin-top: var(--sp-3); display: flex; justify-content: center; }
 .share__empty { margin-top: var(--sp-4); color: var(--ink-500); font-size: var(--text-13); }
 </style>
