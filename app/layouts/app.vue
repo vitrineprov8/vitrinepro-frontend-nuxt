@@ -121,6 +121,7 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
         <NuxtLink
           v-for="item in nav" :key="item.to" :to="item.to"
           class="shell__nav-item" :class="{ active: item.to === activeNavTo }"
+          @click="sidebarOpen = false"
         >
           {{ item.label }}
         </NuxtLink>
@@ -305,5 +306,19 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
   .shell__sidebar { position: fixed; z-index: 60; transform: translateX(-100%); transition: transform var(--t-overlay); }
   .shell__sidebar--open { transform: translateX(0); }
   .shell__burger { display: flex; }
+  /* Sino e menu do avatar usam `width` fixo + `right:0` relativo ao próprio
+     ícone — em telas estreitas isso empurra o painel pra fora do viewport
+     (não é o container que tem overflow:hidden, é o painel que nasce mais
+     largo que a tela e mais à direita do que cabe). Em mobile, os dois viram
+     `position:fixed` ancorados nas bordas laterais da tela (não mais
+     relativos ao ícone), ocupando a largura útil inteira. */
+  .shell__notif-menu {
+    position: fixed; top: calc(var(--topbar-h) + var(--sp-2)); left: var(--sp-3); right: var(--sp-3);
+    width: auto; max-width: none; max-height: calc(100vh - var(--topbar-h) - var(--sp-5));
+  }
+  .shell__user-menu {
+    position: fixed; top: calc(var(--topbar-h) + var(--sp-2)); left: var(--sp-3); right: var(--sp-3);
+    min-width: 0; width: auto;
+  }
 }
 </style>
