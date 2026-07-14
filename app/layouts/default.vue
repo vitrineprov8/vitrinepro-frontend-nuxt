@@ -106,6 +106,13 @@ const transparent = computed(() => overHero.value && !scrolled.value)
 .mkt__nav a { color: var(--ink-300); font-size: var(--text-14); }
 .mkt__nav a:hover { color: var(--white); text-decoration: none; }
 .mkt__actions { display: flex; gap: var(--sp-2); }
+/* Bug real: .btn--ghost (Button.vue) pinta texto em --ink-900 (quase preto),
+   pensado pro shell do app (topbar branca). Aqui a topbar é sempre escura
+   (transparente sobre o hero OU sólida --ink-900 ao rolar) — texto escuro em
+   fundo escuro ficava invisível. Corrigido só neste contexto (não mexe no
+   componente compartilhado, que está certo pros outros usos). */
+.mkt__actions :deep(.btn--ghost) { color: var(--white); }
+.mkt__actions :deep(.btn--ghost:hover:not(:disabled)) { background: rgba(255, 255, 255, 0.12); }
 
 /* topbar é fixed: na Home o hero escuro passa por baixo (topbar transparente);
    nas demais páginas, compensa a altura para o conteúdo não ficar atrás da topbar. */
