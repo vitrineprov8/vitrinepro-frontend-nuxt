@@ -357,16 +357,13 @@ function irPipeline() {
       </template>
     </UiModal>
 
-    <!-- Modal Upgrade (limite atingido) -->
-    <UiModal :open="upgradeOpen" title="Limite de publicações atingido" size="sm" @close="upgradeOpen = false">
-      <p class="text-secondary">
-        Você usou todas as publicações do seu plano neste ciclo<span v-if="usage"> ({{ usage.used }}/{{ usage.limit }})</span>.
-        Faça upgrade para publicar mais vagas.
-      </p>
-      <template #footer>
-        <UiButton block @click="navigateTo('/precos')">Ver planos</UiButton>
-      </template>
-    </UiModal>
+    <!-- Modal Upgrade (limite atingido) — M2, componente global -->
+    <UpgradeModal
+      :open="upgradeOpen"
+      :title="usage ? `Você usou suas ${usage.limit} publicações deste ciclo` : 'Limite de publicações atingido'"
+      :usage="usage"
+      @close="upgradeOpen = false"
+    />
   </div>
 </template>
 

@@ -47,6 +47,10 @@ export interface User {
   verificationLinkedinUrl: string | null
   /** B17 — verificação do e-mail de cadastro (Conta > Dados de acesso). */
   emailVerified: boolean
+  /** B11 — dados de cobrança salvos do último checkout (M3), pra prefill. */
+  cpfCnpj?: string | null
+  billingPostalCode?: string | null
+  billingAddressNumber?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {
