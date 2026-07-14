@@ -14,6 +14,7 @@ export function useAdminWorkspace() {
     { label: 'Verificações', to: '/app/admin/verificacoes' },
     { label: 'Disputas', to: '/app/admin/disputas' },
     { label: 'Placements', to: '/app/admin/placements' },
+    { label: 'Pagamentos', to: '/app/admin/payouts' },
     { label: 'Cupons', to: '/app/admin/cupons' },
     { label: 'Usuários', to: '/app/admin/usuarios' },
     { label: 'Vagas', to: '/app/admin/vagas' },

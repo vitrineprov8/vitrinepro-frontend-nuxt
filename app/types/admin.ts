@@ -125,3 +125,29 @@ export interface AdminCompanySplitUpdateResponse {
   platformSharePercent: number
   placementSplitHistory: AdminCompanySplitHistoryEntry[]
 }
+
+// B25 — GET /admin/payouts (pagamento da comissão do hunter). Decisão
+// arquitetural: aprovação manual do admin + execução automática pelo
+// sistema via Asaas Transfers (ver types/payout.ts para o tipo completo).
+export type PayoutStatus = 'PENDING_REVIEW' | 'APPROVED' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'FAILED'
+export interface AdminPayoutListItem {
+  id: string
+  status: PayoutStatus
+  amount: number | string
+  pixKeySnapshot: string | null
+  pixKeyTypeSnapshot: string | null
+  legalTypeSnapshot: string | null
+  cpfCnpjSnapshot: string | null
+  nfUrl: string | null
+  reviewedByAdminId: string | null
+  reviewedAt: string | null
+  rejectionReason: string | null
+  asaasTransferId: string | null
+  processedAt: string | null
+  paidAt: string | null
+  failureReason: string | null
+  createdAt: string
+  placement: { id: string, finalSalary: number | string, feeAmount: number | string | null } | null
+  vaga: { id: string, title: string, slug: string } | null
+  hunter: { id: string, name: string, email: string } | null
+}
