@@ -58,9 +58,21 @@ onKeyStroke('Escape', () => { if (props.open) requestClose() })
 .modal__close { background: none; border: none; color: var(--ink-500); display: flex; }
 .modal__body { padding: var(--sp-6); overflow-y: auto; }
 .modal__footer {
-  display: flex; justify-content: flex-end; gap: var(--sp-3);
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-6); border-top: 1px solid var(--ink-100);
 }
 .modal-enter-active, .modal-leave-active { transition: opacity var(--t-overlay); }
 .modal-enter-from, .modal-leave-to { opacity: 0; }
+/* F16 — UiModal é compartilhado por praticamente todo modal do app (Upgrade,
+   MarkHired, ReportDeparture, Consent, etc.). O footer com 2 botões (ex.:
+   "Ver todos os planos" + "Fazer upgrade") não tinha flex-wrap, então em
+   telas estreitas (~375-390px) o par não cabia e, por causa do
+   justify-content:flex-end, o 1º botão vazava pra fora da tela pela
+   ESQUERDA (x negativo) em vez de simplesmente quebrar linha. Empilhando em
+   coluna abaixo de 480px, com a ação primária (o botão mais à direita/último
+   no DOM) em cima. */
+@media (max-width: 480px) {
+  .modal__footer { flex-direction: column-reverse; }
+  .modal__footer > * { width: 100%; }
+}
 </style>

@@ -83,4 +83,11 @@ const filas = computed(() => [
   .overview__kpis { grid-template-columns: repeat(2, 1fr); }
   .filas { grid-template-columns: 1fr; }
 }
+/* F16 — em telas bem estreitas (~375-390px) o grid de 2 colunas dos KPIs ainda
+   forçava cada card a ~168px, alguns pixels mais largo que o espaço disponível
+   (conteúdo interno do card não encolhia o suficiente), causando scroll
+   horizontal na página inteira. Empilhando em 1 coluna abaixo de 480px. */
+@media (max-width: 480px) {
+  .overview__kpis { grid-template-columns: 1fr; }
+}
 </style>

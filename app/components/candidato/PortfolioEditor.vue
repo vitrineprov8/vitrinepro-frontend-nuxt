@@ -1,5 +1,14 @@
 <script setup lang="ts">
 // T-C07 — Editor de projeto de portfólio (usado por /portfolio/novo e /portfolio/[id]).
+// F16b (2026-07-16) — header/título/ícones alinhados ao padrão do VagaEditor.vue
+// (o outro editor de entidade única do app): h1 dinâmico "Novo/Editar", sem a
+// subnav do hub "Meu Perfil" (essa subnav é só pras 4 páginas de topo do hub —
+// Dados/Portfólio/Currículos/Formação —, não faz sentido numa página de edição
+// de item específico, um nível mais fundo), título como UiInput normal (igual
+// todo outro campo do form, não um input "hero" sem borda) e ícones lucide
+// (igual o resto do design system) em vez de emoji cru.
+import { ArrowUp, ArrowDown, Trash2, FileText } from 'lucide-vue-next'
+
 interface Tag { id: string, name: string }
 interface PortfolioFile { id: string, fileUrl: string, fileType: 'IMAGE' | 'PDF', caption: string | null, originalFilename: string | null, order: number }
 interface PortfolioDetail {
@@ -79,7 +88,15 @@ if (props.itemId) {
     // resolve o slug via a lista própria (findAll com userId=self, ver
     // comentário de segurança em portfolio.service.ts) e então busca os
     // detalhes completos (galeria de arquivos etc.) por slug.
+    // F16b (2026-07-16) — `auth.user` só é populado pelo fetchMe() do layout
+    // app.vue (onMounted, roda DEPOIS do setup desta página) — numa
+    // navegação direta/hard-reload pra /portfolio/[id], auth.user?.id vinha
+    // undefined aqui, o backend não reconhecia como owner-query e devolvia
+    // a lista pública (sem o rascunho), então `match` nunca era achado e o
+    // formulário inteiro renderizava vazio (parecendo que o projeto sumiu,
+    // mesmo intacto no banco). Fix: garante auth.user carregado primeiro.
     const auth = useAuthStore()
+    if (!auth.user) await auth.fetchMe()
     const list = await api.get<{ data: { id: string, slug: string }[] }>('/portfolio', { userId: auth.user?.id, limit: 100 })
     const match = list.data.find(i => i.id === props.itemId)
     if (match) {
@@ -294,13 +311,12 @@ async function confirmDeleteProject() {
 
 <template>
   <div class="editor">
-    <h1>Meu Perfil</h1>
-    <CandidatoPerfilSubnav />
+    <NuxtLink to="/app/candidato/portfolio" class="editor__back">← Portfólio</NuxtLink>
 
     <div v-if="loading" class="editor__loading">Carregando...</div>
     <template v-else>
       <header class="editor__header">
-        <input v-model="title" class="editor__title-input" placeholder="Nome do projeto" @blur="item && save(true)">
+        <h1>{{ props.itemId ? 'Editar projeto' : 'Novo projeto' }}</h1>
         <div class="editor__header-actions">
           <UiBadge :variant="status === 'PUBLISHED' ? 'success' : 'neutral'">{{ status === 'PUBLISHED' ? 'Publicado' : 'Rascunho' }}</UiBadge>
           <span v-if="saving" class="editor__autosave">Salvando...</span>
@@ -313,7 +329,8 @@ async function confirmDeleteProject() {
 
       <div class="editor__cols">
         <div class="editor__main">
-          <UiInput v-model="subtitle" placeholder="Subtítulo (opcional)" @blur="item && save(true)" />
+          <UiInput v-model="title" label="Nome do projeto" placeholder="Ex.: Redesign do app XPTO" required @blur="item && save(true)" />
+          <UiInput v-model="subtitle" label="Subtítulo (opcional)" @blur="item && save(true)" />
           <CandidatoRichTextEditor v-model="contentHtml" />
 
           <section class="editor__gallery">
@@ -326,11 +343,11 @@ async function confirmDeleteProject() {
             <ul v-if="item?.files.length" class="gallery-list">
               <li v-for="f in [...(item?.files ?? [])].sort((a, b) => a.order - b.order)" :key="f.id" class="gallery-item">
                 <img v-if="f.fileType === 'IMAGE'" :src="f.fileUrl" class="gallery-item__thumb">
-                <span v-else class="gallery-item__thumb gallery-item__thumb--pdf">📄</span>
+                <span v-else class="gallery-item__thumb gallery-item__thumb--pdf"><FileText :size="20" /></span>
                 <span class="gallery-item__name">{{ f.originalFilename || f.caption || 'Arquivo' }}</span>
-                <button class="gallery-item__btn" @click="moveFile(f.id, -1)">↑</button>
-                <button class="gallery-item__btn" @click="moveFile(f.id, 1)">↓</button>
-                <button class="gallery-item__btn gallery-item__btn--danger" @click="deleteFile(f.id)">🗑</button>
+                <button class="gallery-item__btn" title="Mover para cima" aria-label="Mover para cima" @click="moveFile(f.id, -1)"><ArrowUp :size="16" /></button>
+                <button class="gallery-item__btn" title="Mover para baixo" aria-label="Mover para baixo" @click="moveFile(f.id, 1)"><ArrowDown :size="16" /></button>
+                <button class="gallery-item__btn gallery-item__btn--danger" title="Remover arquivo" aria-label="Remover arquivo" @click="deleteFile(f.id)"><Trash2 :size="16" /></button>
               </li>
             </ul>
           </section>
@@ -391,13 +408,15 @@ async function confirmDeleteProject() {
 </template>
 
 <style scoped>
+.editor__back {
+  display: inline-block; font-size: var(--text-13); font-weight: 600; color: var(--ink-500);
+  text-decoration: none; margin-bottom: var(--sp-4);
+}
+.editor__back:hover { color: var(--brand-700); }
 .editor h1 { font-size: var(--text-22); margin-bottom: var(--sp-4); }
 .editor__loading { padding: var(--sp-12) 0; text-align: center; color: var(--ink-500); }
 .editor__header { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-6); flex-wrap: wrap; }
-.editor__title-input {
-  font-size: var(--text-28); font-weight: 700; border: none; outline: none; flex: 1;
-  font-family: var(--font-display); min-width: 200px;
-}
+.editor__header h1 { margin-bottom: 0; }
 .editor__header-actions { display: flex; align-items: center; gap: var(--sp-3); }
 .editor__autosave { font-size: var(--text-12); color: var(--ink-500); }
 .editor__cols { display: grid; grid-template-columns: 1fr 320px; gap: var(--sp-6); align-items: start; }
@@ -408,8 +427,12 @@ async function confirmDeleteProject() {
 .gallery-item { display: flex; align-items: center; gap: var(--sp-3); border: 1px solid var(--ink-100); border-radius: var(--radius-input); padding: var(--sp-2); }
 .gallery-item__thumb { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-input); background: var(--ink-100); display: flex; align-items: center; justify-content: center; }
 .gallery-item__name { flex: 1; font-size: var(--text-13); }
-.gallery-item__btn { background: none; border: none; cursor: pointer; color: var(--ink-500); }
-.gallery-item__btn--danger { color: var(--red-500); }
+.gallery-item__btn {
+  width: 28px; height: 28px; border: none; background: none; border-radius: var(--radius-input);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-500); flex-shrink: 0;
+}
+.gallery-item__btn:hover { background: var(--brand-100); color: var(--brand-700); }
+.gallery-item__btn--danger:hover { background: var(--red-100); color: var(--red-500); }
 .editor__side { display: flex; flex-direction: column; gap: var(--sp-4); }
 .editor__side-card { display: flex; flex-direction: column; gap: var(--sp-3); }
 .editor__side-card h4 { font-size: var(--text-14); color: var(--ink-500); }

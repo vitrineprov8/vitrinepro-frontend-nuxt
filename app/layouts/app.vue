@@ -115,6 +115,7 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
 
 <template>
   <div class="shell">
+    <div v-if="sidebarOpen" class="shell__sidebar-backdrop" @click="sidebarOpen = false" />
     <aside class="shell__sidebar" :class="{ 'shell__sidebar--open': sidebarOpen }">
       <NuxtLink to="/app" class="shell__logo">Vitrine<span>Pro</span></NuxtLink>
       <nav class="shell__nav">
@@ -239,9 +240,9 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
   display: flex; align-items: center; gap: var(--sp-4); padding-inline: var(--sp-6);
   position: sticky; top: 0; z-index: 40;
 }
-.shell__burger { display: none; background: none; border: none; }
-.shell__breadcrumb { font-weight: 600; flex: 1; }
-.shell__topbar-right { display: flex; align-items: center; gap: var(--sp-3); }
+.shell__burger { display: none; background: none; border: none; flex-shrink: 0; }
+.shell__breadcrumb { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shell__topbar-right { display: flex; align-items: center; gap: var(--sp-3); flex-shrink: 0; }
 .shell__iconbtn { position: relative; background: none; border: none; color: var(--ink-500); display: flex; cursor: pointer; }
 .shell__notif-dot {
   position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; padding: 0 3px;
@@ -302,10 +303,26 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
 .shell__user-menu-item--danger { color: var(--red-500); }
 .shell__user-menu-item--danger:hover { background: var(--red-100, #fee2e2); }
 .shell__content { padding: var(--sp-6); max-width: var(--container-app); width: 100%; margin-inline: auto; }
+.shell__sidebar-backdrop { display: none; }
 @media (max-width: 768px) {
   .shell__sidebar { position: fixed; z-index: 60; transform: translateX(-100%); transition: transform var(--t-overlay); }
   .shell__sidebar--open { transform: translateX(0); }
   .shell__burger { display: flex; }
+  /* F16 — drawer mobile não tinha backdrop nenhum: o conteúdo da página
+     continuava visível (e clicável) do lado do menu aberto, sem indicação
+     visual de que o drawer é modal nem forma de fechar tocando fora dele. */
+  .shell__sidebar-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 59;
+    background: rgba(11, 18, 32, 0.5);
+  }
+  /* F16 — em telas estreitas (~375-390px) a topbar inteira (burger + breadcrumb +
+     busca + WorkspaceSwitcher + sino + avatar/nome/chevron) não cabia: o nome do
+     usuário nunca se escondia e o breadcrumb não truncava, empurrando ~8-23px de
+     conteúdo pra fora do viewport (scroll horizontal indesejado na página toda).
+     Escondendo o nome (só avatar+chevron) e reduzindo padding/gap da topbar. */
+  .shell__topbar { padding-inline: var(--sp-3); gap: var(--sp-2); }
+  .shell__topbar-right { gap: var(--sp-2); }
+  .shell__username { display: none; }
   /* Sino e menu do avatar usam `width` fixo + `right:0` relativo ao próprio
      ícone — em telas estreitas isso empurra o painel pra fora do viewport
      (não é o container que tem overflow:hidden, é o painel que nasce mais

@@ -258,7 +258,7 @@ const depoimentos = [
 .hero h1 { font-size: var(--text-48); color: var(--white); line-height: 1.1; }
 .hero__accent { color: var(--brand-600); }
 .hero__sub { font-size: var(--text-18); color: var(--ink-300); margin-top: var(--sp-4); max-width: 520px; }
-.hero__ctas { display: flex; gap: var(--sp-3); margin-top: var(--sp-8); }
+.hero__ctas { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-8); }
 
 /* HERO mock kanban */
 .hero__mock { position: relative; }
@@ -386,6 +386,12 @@ const depoimentos = [
   .split, .split--reverse { grid-template-columns: 1fr; gap: var(--sp-6); }
   .split--reverse .split__media { order: 0; }
   .how__grid, .depo__grid { grid-template-columns: 1fr; }
+  /* F16 — o toast decorativo (posicionado com right:-8px de propósito no
+     desktop, pra "vazar" um pouco pra fora do mock) causava scroll horizontal
+     na página inteira em telas estreitas (~375-390px), já que o hero__mock
+     ocupa a largura toda do container nesse breakpoint. Encostando no bordo
+     em vez de vazar. */
+  .toast-placement { right: 0; }
 }
 @media (max-width: 768px) {
   .hero { padding: 104px 0 72px; }

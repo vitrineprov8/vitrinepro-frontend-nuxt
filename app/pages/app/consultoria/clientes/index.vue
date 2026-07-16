@@ -151,10 +151,14 @@ async function confirmarExclusao() {
     </UiEmptyState>
 
     <div v-else class="clientes__grid">
-      <UiCard v-for="c in companies" :key="c.id" class="cliente-card">
+      <!-- F18 (2026-07-16) — antes só o NOME do cliente era link; o resto do card
+           não reagia ao clique (affordance parcial, inconsistente com o padrão
+           do app). Card inteiro agora navega; menu "⋯" e link do site protegidos
+           com @click.stop. -->
+      <UiCard v-for="c in companies" :key="c.id" clickable class="cliente-card" @click="navigateTo(`/app/consultoria/clientes/${c.id}`)">
         <div class="cliente-card__top">
           <UiAvatar :src="c.logoUrl" :name="c.name" size="lg" />
-          <details v-if="canManageClients" class="menu">
+          <details v-if="canManageClients" class="menu" @click.stop>
             <summary aria-label="Ações">⋯</summary>
             <div class="menu__list">
               <button @click="abrirEditar(c)">Editar</button>

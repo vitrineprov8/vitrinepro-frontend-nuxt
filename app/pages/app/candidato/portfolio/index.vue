@@ -25,6 +25,17 @@ const api = useApi()
 const auth = useAuthStore()
 const toast = useToast()
 
+// F16b (2026-07-16) — bug real: `auth.user` só é populado pelo fetchMe() do
+// layout `app.vue`, chamado em onMounted() — ou seja, roda DEPOIS do setup
+// desta página. Numa navegação direta/hard-reload pra /app/candidato/portfolio
+// (ou /portfolio/novo, /portfolio/[id]), `auth.user` ainda é null aqui, o que
+// fazia essa query cair sempre no fallback vazio (Promise.resolve({data:[]})),
+// mostrando "Mostre seu trabalho" (vazio) mesmo com projetos já salvos no
+// backend. Sem retry depois (nenhum watch em auth.user), o vazio ficava
+// permanente até uma navegação client-side por outra página. Fix: garante
+// auth.user carregado (aguarda fetchMe() se preciso) antes de montar a query.
+if (!auth.user) await auth.fetchMe()
+
 const { data, pending, refresh } = await useAsyncData('candidato-portfolio-list', () =>
   auth.user
     ? api.get<{ data: PortfolioListItem[] }>('/portfolio', { userId: auth.user.id, limit: 100 }).catch(() => ({ data: [] }))
@@ -35,6 +46,20 @@ const items = computed(() => data.value?.data ?? [])
 const openMenu = ref<string | null>(null)
 function toggleMenu(id: string) {
   openMenu.value = openMenu.value === id ? null : id
+}
+
+// F18 (2026-07-16) — bug UX reportado pelo Andres: clicar no card não levava
+// a lugar nenhum (único grid de cards do app sem navegação — todos os outros
+// usam NuxtLink ou @click na linha/card). Clique no card → editor do projeto;
+// ações do menu "⋯" protegidas com @click.stop pra não disparar a navegação.
+function openItem(item: PortfolioListItem) {
+  navigateTo(`/app/candidato/portfolio/${item.id}`)
+}
+// Projeto publicado ganha "Ver página pública" no menu (abre a URL pública
+// /portfolio/:slug em nova aba — o que um visitante do perfil vê).
+function openPublic(item: PortfolioListItem) {
+  openMenu.value = null
+  window.open(`/portfolio/${item.slug}`, '_blank', 'noopener')
 }
 
 async function togglePublish(item: PortfolioListItem) {
@@ -90,7 +115,7 @@ async function confirmDelete() {
     </div>
 
     <div v-else-if="items.length" class="portfolio__grid">
-      <UiCard v-for="item in items" :key="item.id" class="portfolio__card">
+      <UiCard v-for="item in items" :key="item.id" clickable class="portfolio__card" @click="openItem(item)">
         <div class="portfolio__cover" :style="item.coverImageUrl ? { backgroundImage: `url(${item.coverImageUrl})` } : undefined" />
         <div class="portfolio__body">
           <div class="portfolio__body-head">
@@ -101,10 +126,11 @@ async function confirmDelete() {
           </div>
           <p v-if="item.subtitle" class="text-secondary">{{ item.subtitle }}</p>
 
-          <div class="portfolio__menu-wrap">
-            <button class="portfolio__menu-btn" @click="toggleMenu(item.id)">⋯</button>
+          <div class="portfolio__menu-wrap" @click.stop>
+            <button class="portfolio__menu-btn" aria-label="Ações do projeto" @click="toggleMenu(item.id)">⋯</button>
             <div v-if="openMenu === item.id" class="portfolio__menu">
               <button @click="navigateTo(`/app/candidato/portfolio/${item.id}`)">Editar</button>
+              <button v-if="item.status === 'PUBLISHED'" @click="openPublic(item)">Ver página pública ↗</button>
               <button @click="togglePublish(item)">{{ item.status === 'PUBLISHED' ? 'Despublicar' : 'Publicar' }}</button>
               <button class="portfolio__menu-danger" @click="askDelete(item)">Excluir</button>
             </div>
@@ -136,8 +162,16 @@ async function confirmDelete() {
 .portfolio__head h2 { font-size: var(--text-18); }
 .portfolio__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-4); }
 .portfolio__skel { height: 240px; border-radius: var(--radius-card); }
-.portfolio__card { padding: 0; overflow: hidden; }
-.portfolio__cover { aspect-ratio: 16/9; background-size: cover; background-position: center; background-color: var(--ink-100); }
+/* F16c (2026-07-16) — bug real: overflow:hidden aqui clipava o dropdown
+   .portfolio__menu (absolute, descendente de .portfolio__card) porque
+   overflow:hidden num ancestral corta qualquer filho que ultrapasse a
+   caixa, independente de z-index. O overflow só existia pra arredondar
+   os cantos de cima do .portfolio__cover — então movemos o clip pra lá. */
+.portfolio__card { padding: 0; }
+.portfolio__cover {
+  aspect-ratio: 16/9; background-size: cover; background-position: center; background-color: var(--ink-100);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+}
 .portfolio__body { padding: var(--sp-4); position: relative; }
 .portfolio__body-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
 .portfolio__body-head h3 { font-size: var(--text-16); }
