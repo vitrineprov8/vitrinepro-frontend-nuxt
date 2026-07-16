@@ -1,7 +1,6 @@
 // Navegação do app shell (layout 'app') para o workspace da Empresa (Fase 3,
 // design-spec 05_WORKSPACE_EMPRESA.md). Mesmo padrão do useHunterWorkspace.ts.
-// Faturas (T-E07) fica fora por enquanto — depende de B11 (pagamentos), ainda
-// bloqueado.
+// Faturas (T-E07) — cobrança real do fee via Asaas (B11 + B25 já prontos).
 import type { NavItem } from './useHunterWorkspace'
 
 export function useEmpresaWorkspace() {
@@ -13,6 +12,7 @@ export function useEmpresaWorkspace() {
     { label: 'Minhas Vagas', to: '/app/empresa/vagas' },
     { label: 'Candidatos', to: '/app/empresa/candidatos' },
     { label: 'Hunters', to: '/app/empresa/hunters' },
+    { label: 'Faturas', to: '/app/empresa/faturas' },
     { label: 'Página da Empresa', to: '/app/empresa/pagina' },
     { label: 'Configurações', to: '/app/empresa/config' },
   ]

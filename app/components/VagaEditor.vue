@@ -171,6 +171,8 @@ const upgradeOpen = ref(false)
 const successOpen = ref(false)
 const publishing = ref(false)
 const triedPublish = ref(false)
+// T-E07 — inadimplência bloqueia publish (fatura vencida há mais de 7 dias).
+const invoiceBlockOpen = ref(false)
 
 async function onPublishClick() {
   triedPublish.value = true
@@ -203,6 +205,9 @@ async function doPublish() {
     confirmOpen.value = false
     if (err.status === 403 && err.code === 'PLAN_LIMIT_REACHED') {
       upgradeOpen.value = true
+    }
+    else if (err.status === 403 && err.code === 'INVOICE_OVERDUE_BLOCKED') {
+      invoiceBlockOpen.value = true
     }
     else if (err.status === 409) {
       // Já está publicada — sincroniza o estado e informa.
@@ -364,6 +369,18 @@ function irPipeline() {
       :usage="usage"
       @close="upgradeOpen = false"
     />
+
+    <!-- Inadimplência bloqueia publish (T-E07) -->
+    <UiModal :open="invoiceBlockOpen" title="Pagamentos pendentes" size="sm" @close="invoiceBlockOpen = false">
+      <p class="text-secondary">
+        Novas publicações estão bloqueadas porque há uma fatura de fee vencida há mais de 7 dias.
+        Regularize o pagamento para voltar a publicar vagas.
+      </p>
+      <template #footer>
+        <UiButton variant="ghost" @click="invoiceBlockOpen = false">Fechar</UiButton>
+        <UiButton @click="navigateTo('/app/empresa/faturas')">Ver faturas</UiButton>
+      </template>
+    </UiModal>
   </div>
 </template>
 

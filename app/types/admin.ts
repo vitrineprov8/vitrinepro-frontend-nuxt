@@ -151,3 +151,23 @@ export interface AdminPayoutListItem {
   vaga: { id: string, title: string, slug: string } | null
   hunter: { id: string, name: string, email: string } | null
 }
+
+// Faturas de fee (T-E07) — GET /admin/invoices.
+export type InvoiceStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'DISPUTED'
+export interface AdminInvoiceListItem {
+  id: string
+  type: string
+  status: InvoiceStatus
+  amount: number | string
+  dueDate: string
+  billingType: string | null
+  invoiceUrl: string | null
+  paidAt: string | null
+  disputeReason: string | null
+  disputedAt: string | null
+  disputeResolvedAt: string | null
+  createdAt: string
+  company: { id: string, name: string, email: string } | null
+  placement: { id: string, finalSalary: number | string, feeAmount: number | string | null } | null
+  vaga: { id: string, title: string, slug: string } | null
+}
