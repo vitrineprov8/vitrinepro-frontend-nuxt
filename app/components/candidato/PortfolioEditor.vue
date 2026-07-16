@@ -126,6 +126,15 @@ if (props.itemId) {
 // ── Salvar (autosave leve — botão explícito "Salvar rascunho" + autosave silencioso) ──
 const saving = ref(false)
 const savedRecently = ref(false)
+// F19 (2026-07-16) — bug latente pré-existente descoberto revisando o backend:
+// as respostas de PATCH /portfolio/:id e POST /portfolio/:id/cover carregam só
+// a relation `tags` (findOneOrFail), NUNCA `files` — então cada autosave/upload
+// de capa que fazia `item.value = updated` apagava a galeria DA TELA (os
+// arquivos seguiam no banco, mas sumiam da UI até um reload). Merge central:
+// preserva a lista local de files quando a resposta não a traz.
+function mergeItem(updated: PortfolioDetail) {
+  item.value = { ...updated, files: updated.files ?? item.value?.files ?? [] }
+}
 function buildPayload() {
   return {
     title: title.value.trim(),
@@ -149,12 +158,12 @@ async function save(silent = false) {
   try {
     if (item.value) {
       const updated = await api.patch<PortfolioDetail>(`/portfolio/${item.value.id}`, buildPayload())
-      item.value = updated
+      mergeItem(updated)
       slug.value = updated.slug
     }
     else {
       const created = await api.post<PortfolioDetail>('/portfolio', buildPayload())
-      item.value = created
+      mergeItem(created)
       slug.value = created.slug
       router.replace(`/app/candidato/portfolio/${created.id}`)
     }
@@ -186,11 +195,15 @@ async function confirmPublish() {
   publishing.value = true
   try {
     const updated = await api.patch<PortfolioDetail>(`/portfolio/${item.value.id}`, { ...buildPayload(), status: 'PUBLISHED' })
-    item.value = updated
+    mergeItem(updated)
     status.value = updated.status
     slug.value = updated.slug
     publishConfirmOpen.value = false
     toast.success('Projeto publicado!')
+    // F19b (2026-07-16), pedido do Andres: publicar encerra o fluxo de edição —
+    // volta pra lista de projetos (onde o card recém-publicado aparece com o
+    // badge "Publicado" e o menu "⋯ → Ver página pública").
+    navigateTo('/app/candidato/portfolio')
   }
   catch {
     toast.error('Não foi possível publicar.')
@@ -203,7 +216,7 @@ async function unpublish() {
   if (!item.value) return
   try {
     const updated = await api.patch<PortfolioDetail>(`/portfolio/${item.value.id}`, { status: 'DRAFT' })
-    item.value = updated
+    mergeItem(updated)
     status.value = updated.status
     toast.info('Projeto despublicado.')
   }
@@ -213,25 +226,68 @@ async function unpublish() {
 }
 
 // ── Cover + galeria ──────────────────────────────────────────────────────────
+// F19 (2026-07-16) — reportado pelo Andres: era preciso "Salvar rascunho"
+// manualmente antes de poder enviar capa/arquivos (os endpoints de upload são
+// /portfolio/:id/..., precisam de um id). Agora o rascunho é criado sozinho,
+// de forma transparente, no primeiro upload: se ainda não existe item, cria um
+// com os valores atuais do form (título placeholder "Projeto sem título" se o
+// campo estiver vazio — o backend exige título, e renomear depois regenera o
+// slug com tombstone 301, ver portfolio.service.ts::update). A URL só troca de
+// /novo pra /[id] DEPOIS do upload terminar (router.replace no fim do handler,
+// não dentro do ensureDraft) — trocar antes remontaria a página no meio do
+// upload e o arquivo recém-enviado não apareceria até um reload manual.
+async function ensureDraft(): Promise<boolean> {
+  if (item.value) return true
+  try {
+    const payload = buildPayload()
+    if (!payload.title) {
+      payload.title = 'Projeto sem título'
+      title.value = payload.title // reflete no campo pra ficar óbvio que dá pra renomear
+    }
+    const created = await api.post<PortfolioDetail>('/portfolio', payload)
+    mergeItem(created)
+    slug.value = created.slug
+    return true
+  }
+  catch {
+    toast.error('Não foi possível criar o rascunho.')
+    return false
+  }
+}
+// Depois do primeiro upload em /novo, alinha a URL com o item já criado
+// (reload/voltar passam a funcionar). O replace remonta a página ([id].vue
+// recarrega tudo do servidor), então antes dele um save(true) flusha qualquer
+// edição digitada DURANTE o upload (o autosave de 1.5s pode não ter disparado
+// ainda) — sem isso, essas edições se perderiam no remount. Fora do fluxo de
+// upload nada muda: o save() manual continua fazendo o replace imediato.
+async function syncUrlToItem() {
+  if (!props.itemId && item.value) {
+    await save(true)
+    router.replace(`/app/candidato/portfolio/${item.value.id}`)
+  }
+}
+
 const coverInput = ref<HTMLInputElement | null>(null)
 const uploadingCover = ref(false)
 function pickCover() { coverInput.value?.click() }
 async function onCoverSelected(e: Event) {
-  if (!item.value) { toast.info('Salve o rascunho antes de enviar a capa.'); return }
   const file = (e.target as HTMLInputElement).files?.[0]
   if (!file) return
   uploadingCover.value = true
   try {
+    if (!await ensureDraft()) return
     const form = new FormData()
     form.append('file', file)
-    const updated = await api.post<PortfolioDetail>(`/portfolio/${item.value.id}/cover`, form)
-    item.value = updated
+    const updated = await api.post<PortfolioDetail>(`/portfolio/${item.value!.id}/cover`, form)
+    mergeItem(updated)
+    await syncUrlToItem()
   }
   catch {
     toast.error('Não foi possível enviar a capa.')
   }
   finally {
     uploadingCover.value = false
+    if (coverInput.value) coverInput.value.value = ''
   }
 }
 
@@ -239,20 +295,20 @@ const filesInput = ref<HTMLInputElement | null>(null)
 const uploadingFile = ref(false)
 function pickFiles() { filesInput.value?.click() }
 async function onFilesSelected(e: Event) {
-  if (!item.value) { toast.info('Salve o rascunho antes de enviar arquivos.'); return }
   const files = Array.from((e.target as HTMLInputElement).files ?? [])
   if (!files.length) return
   uploadingFile.value = true
   try {
+    if (!await ensureDraft()) return
     for (const file of files) {
       const form = new FormData()
       form.append('file', file)
-      await api.post(`/portfolio/${item.value.id}/files`, form)
+      await api.post(`/portfolio/${item.value!.id}/files`, form)
     }
-    const auth = useAuthStore()
-    const list = await api.get<{ data: { id: string, slug: string }[] }>('/portfolio', { userId: auth.user?.id, limit: 100 })
-    const match = list.data.find(i => i.id === item.value?.id)
-    if (match) item.value = await api.get<PortfolioDetail>(`/portfolio/${match.slug}`)
+    // O POST /files devolve só o arquivo — recarrega o detalhe completo
+    // (via slug, único GET de detalhe que existe) pra atualizar a galeria.
+    item.value = await api.get<PortfolioDetail>(`/portfolio/${item.value!.slug}`)
+    await syncUrlToItem()
   }
   catch {
     toast.error('Não foi possível enviar o arquivo.')
@@ -336,10 +392,10 @@ async function confirmDeleteProject() {
           <section class="editor__gallery">
             <h3>Galeria de arquivos</h3>
             <input ref="filesInput" type="file" accept="image/*,application/pdf" multiple class="editor__hidden-input" @change="onFilesSelected">
-            <UiButton variant="secondary" size="sm" :loading="uploadingFile" :disabled="!item" @click="pickFiles">
+            <UiButton variant="secondary" size="sm" :loading="uploadingFile" @click="pickFiles">
               Adicionar arquivos
             </UiButton>
-            <p v-if="!item" class="text-secondary">Salve o rascunho para poder enviar arquivos.</p>
+            <p v-if="!item?.files.length" class="text-secondary">Imagens (JPG/PNG) e PDFs. Você pode adicionar antes mesmo de salvar.</p>
             <ul v-if="item?.files.length" class="gallery-list">
               <li v-for="f in [...(item?.files ?? [])].sort((a, b) => a.order - b.order)" :key="f.id" class="gallery-item">
                 <img v-if="f.fileType === 'IMAGE'" :src="f.fileUrl" class="gallery-item__thumb">
@@ -356,8 +412,9 @@ async function confirmDeleteProject() {
         <aside class="editor__side">
           <UiCard class="editor__side-card">
             <h4>Capa</h4>
-            <div class="editor__cover" :style="item?.coverImageUrl ? { backgroundImage: `url(${item.coverImageUrl})` } : undefined" @click="pickCover">
-              <span v-if="!item?.coverImageUrl">Clique para enviar</span>
+            <div class="editor__cover" :style="item?.coverImageUrl ? { backgroundImage: `url(${item.coverImageUrl})` } : undefined" @click="!uploadingCover && pickCover()">
+              <span v-if="uploadingCover">Enviando...</span>
+              <span v-else-if="!item?.coverImageUrl">Clique para enviar</span>
             </div>
             <input ref="coverInput" type="file" accept="image/*" class="editor__hidden-input" @change="onCoverSelected">
           </UiCard>
