@@ -1,13 +1,12 @@
 <script setup lang="ts">
 // Conta & Transversais (design-spec 06 §C) — acessível pelo avatar-menu de
-// qualquer persona. Escopo desta rodada: só "Dados de acesso" e "Indicações"
-// (M4) — as tabs "Assinatura" (M1) e "Privacidade" (exportar/excluir conta,
-// B26) ficam de fora de propósito: a primeira depende do gateway de
-// pagamento real (B11, não construído), a segunda é o gap LGPD B26
-// (pré-launch, ainda não desenhado/implementado). "Notificações" também não
-// entrou aqui porque cada workspace já tem sua própria página de
-// Configurações com a matriz sino/e-mail (ver empresa/consultoria config.vue)
-// — duplicar uma 3ª cópia transversal não foi pedido nesta rodada.
+// qualquer persona. "Dados de acesso" (senha + sessões ativas, B26),
+// "Indicações" (M4) e "Privacidade" (exportar dados/excluir conta, B26). A
+// tab "Assinatura" (M1) fica de fora — depende do gateway de pagamento real
+// (B11, não construído). "Notificações" também não entrou aqui porque cada
+// workspace já tem sua própria página de Configurações com a matriz
+// sino/e-mail (ver empresa/consultoria config.vue) — duplicar uma 3ª cópia
+// transversal não foi pedido.
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useSeoMeta({ title: 'Minha Conta' })
 
@@ -20,10 +19,11 @@ const api = useApi()
 const auth = useAuthStore()
 const toast = useToast()
 
-const section = ref<'dados' | 'indicacoes'>('dados')
+const section = ref<'dados' | 'indicacoes' | 'privacidade'>('dados')
 const sections = [
   { value: 'dados' as const, label: 'Dados de acesso' },
   { value: 'indicacoes' as const, label: 'Indicações' },
+  { value: 'privacidade' as const, label: 'Privacidade' },
 ]
 
 // ── Dados de acesso — e-mail + reenvio de verificação ───────────────────────
@@ -72,6 +72,115 @@ async function trocarSenha() {
   }
   finally {
     changingPassword.value = false
+  }
+}
+
+// ── Dados de acesso — sessões ativas (B26) ──────────────────────────────────
+interface SessionItem {
+  id: string
+  userAgent: string | null
+  ip: string | null
+  createdAt: string
+  lastSeenAt: string | null
+  current: boolean
+}
+
+const { data: sessions, pending: sessionsPending, refresh: refreshSessions } = await useAsyncData('conta-sessoes', () =>
+  api.get<SessionItem[]>('/me/sessions').catch(() => []))
+
+const revokingId = ref<string | null>(null)
+async function revogarSessao(id: string) {
+  if (!window.confirm('Encerrar esta sessão? O dispositivo vai precisar fazer login novamente.')) return
+  revokingId.value = id
+  try {
+    await api.del(`/me/sessions/${id}`)
+    toast.success('Sessão encerrada.')
+    await refreshSessions()
+  }
+  catch {
+    toast.error('Não foi possível encerrar a sessão.')
+  }
+  finally {
+    revokingId.value = null
+  }
+}
+
+function fmtDataHora(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('pt-BR')
+}
+
+/** Extração bem simples de "dispositivo/navegador" a partir do User-Agent — não precisa ser perfeita, só legível. */
+function formatarDispositivo(ua: string | null) {
+  if (!ua) return 'Dispositivo desconhecido'
+  const isMobile = /Mobile|Android|iPhone/.test(ua)
+  let os = 'Desconhecido'
+  if (/Windows/.test(ua)) os = 'Windows'
+  else if (/Mac OS/.test(ua)) os = 'macOS'
+  else if (/Android/.test(ua)) os = 'Android'
+  else if (/iPhone|iPad/.test(ua)) os = 'iOS'
+  else if (/Linux/.test(ua)) os = 'Linux'
+  let browser = 'Navegador'
+  if (/Edg\//.test(ua)) browser = 'Edge'
+  else if (/Chrome\//.test(ua)) browser = 'Chrome'
+  else if (/Firefox\//.test(ua)) browser = 'Firefox'
+  else if (/Safari\//.test(ua)) browser = 'Safari'
+  return `${browser} · ${os}${isMobile ? ' (mobile)' : ''}`
+}
+
+// ── Privacidade (B26) — exportar dados LGPD ─────────────────────────────────
+const exporting = ref(false)
+async function exportarDados() {
+  exporting.value = true
+  try {
+    const data = await api.get('/me/account/export')
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meus-dados-vitrinepro-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Download iniciado.')
+  }
+  catch {
+    toast.error('Não foi possível exportar seus dados. Tente novamente.')
+  }
+  finally {
+    exporting.value = false
+  }
+}
+
+// ── Privacidade (B26) — excluir conta ───────────────────────────────────────
+const showDeleteModal = ref(false)
+const deleteEmailInput = ref('')
+const deleting = ref(false)
+const deleteError = ref('')
+
+const canConfirmDelete = computed(() =>
+  !!auth.user?.email && deleteEmailInput.value.trim().toLowerCase() === auth.user.email.trim().toLowerCase())
+
+function abrirModalExclusao() {
+  deleteEmailInput.value = ''
+  deleteError.value = ''
+  showDeleteModal.value = true
+}
+
+async function confirmarExclusao() {
+  if (!canConfirmDelete.value) return
+  deleteError.value = ''
+  deleting.value = true
+  try {
+    await api.del('/me/account', { email: deleteEmailInput.value.trim() })
+    toast.success('Conta excluída. Sentiremos sua falta.')
+    showDeleteModal.value = false
+    auth.logout()
+  }
+  catch (e) {
+    deleteError.value = (e as { message?: string })?.message ?? 'Não foi possível excluir a conta. Tente novamente.'
+  }
+  finally {
+    deleting.value = false
   }
 }
 
@@ -154,6 +263,52 @@ function fmtData(iso: string) {
               <UiButton type="submit" size="sm" :loading="changingPassword">Salvar nova senha</UiButton>
             </form>
           </UiCard>
+
+          <UiCard class="conta__card conta__card--wide">
+            <h2>Sessões ativas</h2>
+            <p class="conta__hint">Dispositivos onde sua conta está logada atualmente.</p>
+            <div v-if="sessionsPending" class="skeleton" style="height: 100px;" />
+            <ul v-else-if="sessions?.length" class="conta__sessions">
+              <li v-for="s in sessions" :key="s.id" class="conta__session">
+                <div class="conta__session-info">
+                  <strong>{{ formatarDispositivo(s.userAgent) }}</strong>
+                  <span class="conta__session-meta">
+                    {{ s.ip || 'IP desconhecido' }} · último acesso: {{ fmtDataHora(s.lastSeenAt) }}
+                  </span>
+                </div>
+                <UiBadge v-if="s.current" variant="success">Sessão atual</UiBadge>
+                <UiButton
+                  v-else size="sm" variant="secondary" :loading="revokingId === s.id"
+                  @click="revogarSessao(s.id)"
+                >
+                  Revogar
+                </UiButton>
+              </li>
+            </ul>
+            <p v-else class="conta__hint">Nenhuma sessão encontrada.</p>
+          </UiCard>
+        </template>
+
+        <template v-else-if="section === 'privacidade'">
+          <UiCard class="conta__card">
+            <h2>Exportar meus dados</h2>
+            <p class="conta__hint">
+              Baixe uma cópia dos principais dados vinculados à sua conta na VitrinePro (LGPD art. 18).
+            </p>
+            <UiButton size="sm" variant="secondary" :loading="exporting" @click="exportarDados">
+              Exportar meus dados
+            </UiButton>
+          </UiCard>
+
+          <UiCard class="conta__card conta__card--danger">
+            <h2>Excluir minha conta</h2>
+            <p class="conta__hint">
+              Anonimiza seus dados pessoais e desativa sua conta. Esta ação não pode ser desfeita.
+            </p>
+            <UiButton size="sm" variant="danger" @click="abrirModalExclusao">
+              Excluir minha conta
+            </UiButton>
+          </UiCard>
         </template>
 
         <template v-else-if="section === 'indicacoes'">
@@ -197,6 +352,29 @@ function fmtData(iso: string) {
         </template>
       </div>
     </div>
+
+    <UiModal :open="showDeleteModal" title="Excluir minha conta" size="md" @close="showDeleteModal = false">
+      <div class="conta__delete">
+        <p>Ao excluir sua conta:</p>
+        <ul class="conta__delete-list">
+          <li>Seu nome, e-mail, telefone, foto e demais dados pessoais são anonimizados.</li>
+          <li>Sua conta é desativada e você é desconectado de todos os dispositivos.</li>
+          <li>Vagas, candidaturas e placements não são apagados, mas viram registros anônimos (sem seus dados pessoais).</li>
+          <li>Faturas e histórico de pagamentos são mantidos anonimizados, conforme exigido por lei.</li>
+        </ul>
+        <p class="conta__delete-confirm-label">
+          Para confirmar, digite seu e-mail (<strong>{{ auth.user?.email }}</strong>):
+        </p>
+        <UiInput v-model="deleteEmailInput" type="email" placeholder="seu@email.com" />
+        <p v-if="deleteError" class="conta__error">{{ deleteError }}</p>
+      </div>
+      <template #footer>
+        <UiButton variant="secondary" @click="showDeleteModal = false">Cancelar</UiButton>
+        <UiButton variant="danger" :disabled="!canConfirmDelete" :loading="deleting" @click="confirmarExclusao">
+          Excluir minha conta
+        </UiButton>
+      </template>
+    </UiModal>
   </div>
 </template>
 
@@ -231,8 +409,21 @@ function fmtData(iso: string) {
 .conta__table { width: 100%; border-collapse: collapse; font-size: var(--text-14); }
 .conta__table th { text-align: left; color: var(--ink-500); font-weight: 600; font-size: var(--text-13); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--ink-100); }
 .conta__table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--ink-100); }
+.conta__card--wide { max-width: 640px; }
+.conta__card--danger { border: 1px solid var(--red-200, #fecaca); }
+.conta__sessions { display: flex; flex-direction: column; gap: var(--sp-3); }
+.conta__session {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3); border: 1px solid var(--ink-100); border-radius: var(--radius-md); flex-wrap: wrap;
+}
+.conta__session-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.conta__session-meta { font-size: var(--text-13); color: var(--ink-500); }
+.conta__delete { display: flex; flex-direction: column; gap: var(--sp-3); }
+.conta__delete-list { display: flex; flex-direction: column; gap: var(--sp-2); padding-left: var(--sp-5); font-size: var(--text-14); color: var(--ink-700); }
+.conta__delete-confirm-label { font-size: var(--text-14); margin-top: var(--sp-2); }
 @media (max-width: 640px) {
   .conta__layout { grid-template-columns: 1fr; }
   .conta__nav { flex-direction: row; overflow-x: auto; }
+  .conta__session { flex-direction: column; align-items: flex-start; }
 }
 </style>
