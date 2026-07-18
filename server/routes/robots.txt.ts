@@ -20,5 +20,9 @@ export default defineEventHandler((event) => {
     'Disallow: /consentimento/',
     '',
     `Sitemap: ${base}/sitemap.xml`,
+    // T-GUIA — convenção llmstxt.org: mapa do site em markdown para modelos de
+    // linguagem. Não é padrão oficial de robots, mas é inofensivo para
+    // crawlers (linha desconhecida é ignorada) e serve de dica para quem procura.
+    `# Conteúdo em markdown para assistentes de IA: ${base}/llms.txt`,
   ].join('\n')
 })

@@ -14,9 +14,13 @@ interface RadarResponse { data: RadarVaga[], total: number }
 interface HunterCard { username: string }
 interface HuntersResponse { items: HunterCard[], total: number }
 
+import { GUIAS } from '../../shared/guias'
+
 const STATIC_PATHS = [
   '', 'sobre', 'contato', 'precos', 'para-empresas', 'para-candidatos',
-  'hunters', 'vagas', 'termos', 'privacidade', 'cookies',
+  'hunters', 'vagas', 'termos', 'privacidade', 'cookies', 'ajuda',
+  // T-GUIA — índice + uma guia por persona (conteúdo estável, vale indexar).
+  'guias', ...GUIAS.map(g => `guias/${g.slug}`),
 ]
 
 const MAX_PAGES = 5

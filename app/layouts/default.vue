@@ -32,6 +32,7 @@ const transparent = computed(() => overHero.value && !scrolled.value)
           <NuxtLink to="/vagas">Vagas</NuxtLink>
           <NuxtLink to="/hunters">Hunters</NuxtLink>
           <NuxtLink to="/precos">Preços</NuxtLink>
+          <NuxtLink to="/guias">Guias</NuxtLink>
         </nav>
         <div class="mkt__actions">
           <template v-if="auth.isAuthenticated">
@@ -70,10 +71,11 @@ const transparent = computed(() => overHero.value && !scrolled.value)
             <NuxtLink to="/contato">Contato</NuxtLink>
           </div>
           <div class="mkt__footer-col">
-            <h4>Legal</h4>
+            <h4>Aprender</h4>
+            <NuxtLink to="/guias">Guias de uso</NuxtLink>
+            <NuxtLink to="/ajuda">Central de ajuda</NuxtLink>
             <NuxtLink to="/termos">Termos de uso</NuxtLink>
             <NuxtLink to="/privacidade">Privacidade</NuxtLink>
-            <NuxtLink to="/ajuda">Ajuda</NuxtLink>
           </div>
           <div class="mkt__footer-col">
             <h4>Social</h4>
