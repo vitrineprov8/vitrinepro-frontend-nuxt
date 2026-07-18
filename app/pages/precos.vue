@@ -84,6 +84,8 @@ const compareRows = computed(() => {
     { label: 'Acessos (membros)', values: [seats('FREE'), seats('RECRUITER'), seats('TEAM'), seats('ENTERPRISE')] },
     { label: 'Painel de candidatos', values: ['—', '✓', '✓', '✓'] },
     { label: 'Compartilhamento ilimitado', values: ['—', '✓', '✓', '✓'] },
+    // B27 — segurança não é recurso premium: 2FA em todos os planos, de graça.
+    { label: 'Verificação em duas etapas (2FA)', values: ['✓', '✓', '✓', '✓'] },
     { label: 'Gestão de clientes (Empresas)', values: ['—', '—', '✓', '✓'] },
     { label: 'Destaque nas buscas', values: ['—', '—', '✓', '✓'] },
     { label: 'Suporte prioritário', values: ['—', '—', '—', '✓'] },
@@ -99,6 +101,7 @@ const faq = [
   { q: 'Os limites de vagas acumulam?', a: 'Não. Os slots de publicação são por ciclo de cobrança e não acumulam para o mês seguinte.' },
   { q: 'Quantos acessos o plano Team inclui?', a: 'O Recruiter Team inclui até 5 acessos simultâneos. Para mais, fale com vendas sobre o Enterprise.' },
   { q: 'Quais formas de pagamento são aceitas?', a: 'Pix, cartão de crédito e boleto. O processamento de pagamentos é feito de forma segura.' },
+  { q: 'A verificação em duas etapas (2FA) é paga?', a: 'Não. O 2FA está disponível de graça em todos os planos, incluindo o Gratuito — segurança de conta não é recurso premium. Você ativa em Conta → Dados de acesso usando qualquer app autenticador (Google Authenticator, Authy, 1Password).' },
 ]
 </script>
 

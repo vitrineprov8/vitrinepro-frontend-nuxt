@@ -83,10 +83,49 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string) {
-    const res = await api.post<{ access_token: string }>('/auth/login', { email, password })
+  /**
+   * B27 — o login pode terminar em dois lugares:
+   *  - conta sem 2FA → devolve `access_token`, sessão criada, fim.
+   *  - conta com 2FA → devolve `challengeToken` e NENHUM access_token; a
+   *    sessão só nasce depois de `verifyTwoFactor()`.
+   * O challenge token é deliberadamente mantido fora de `api.token` (o backend
+   * rejeita ele em rotas autenticadas) — vive só na memória do componente de
+   * login até o 2º passo.
+   */
+  async function login(email: string, password: string): Promise<
+    | { twoFactorRequired: true, challengeToken: string }
+    | { twoFactorRequired: false, twoFactorSetupRequired: boolean }
+  > {
+    const res = await api.post<{
+      access_token?: string
+      twoFactorRequired?: boolean
+      challengeToken?: string
+      twoFactorSetupRequired?: boolean
+    }>('/auth/login', { email, password })
+
+    if (res.twoFactorRequired && res.challengeToken) {
+      return { twoFactorRequired: true, challengeToken: res.challengeToken }
+    }
+
+    api.token.value = res.access_token ?? null
+    await fetchMe()
+    return {
+      twoFactorRequired: false,
+      twoFactorSetupRequired: !!res.twoFactorSetupRequired,
+    }
+  }
+
+  /** B27 — 2º passo do login: troca challenge token + código por uma sessão real. */
+  async function verifyTwoFactor(challengeToken: string, code: string) {
+    const res = await api.post<{
+      access_token: string
+      usedBackupCode: boolean
+      backupCodesRemaining: number
+    }>('/auth/2fa/verify', { challengeToken, code })
+
     api.token.value = res.access_token
     await fetchMe()
+    return res
   }
 
   /** Aplica um token vindo do OAuth (callback) e carrega o usuário.
@@ -160,5 +199,5 @@ export const useAuthStore = defineStore('auth', () => {
     await api.post('/auth/change-password', { currentPassword, newPassword })
   }
 
-  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword, changePassword, activatePersona }
+  return { user, loading, isAuthenticated, isAdmin, effectivePlan, fetchMe, login, verifyTwoFactor, loginWithToken, register, logout, setActiveContext, forgotPassword, resetPassword, changePassword, activatePersona }
 })

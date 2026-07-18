@@ -75,6 +75,137 @@ async function trocarSenha() {
   }
 }
 
+// ── Dados de acesso — verificação em duas etapas / 2FA (B27) ────────────────
+// Gratuito em todos os planos (segurança de conta não é recurso premium) e
+// obrigatório para ADMIN — o backend devolve `enforced:true` nesse caso.
+interface TwoFactorStatus {
+  enabled: boolean
+  enabledAt: string | null
+  backupCodesRemaining: number
+  enforced: boolean
+  isOAuthAccount: boolean
+}
+
+const { data: tfa, refresh: refreshTfa } = await useAsyncData('conta-2fa', () =>
+  api.get<TwoFactorStatus>('/auth/2fa/status').catch(() => null))
+
+/** null = fechado · 'setup' = mostrando QR/segredo · 'codes' = mostrando códigos */
+const tfaStage = ref<null | 'setup' | 'codes'>(null)
+const tfaSetup = ref<{ secret: string, secretFormatted: string, otpauthUri: string, qrDataUrl: string | null } | null>(null)
+const tfaCode = ref('')
+const tfaError = ref('')
+const tfaBusy = ref(false)
+const backupCodes = ref<string[]>([])
+const backupCodesAck = ref(false)
+
+// Abre direto a configuração quando o login redirecionou um ADMIN pra cá.
+onMounted(() => {
+  if (useRoute().query['2fa'] === 'required' && !tfa.value?.enabled) iniciarTfa()
+})
+
+async function iniciarTfa() {
+  tfaError.value = ''
+  tfaBusy.value = true
+  try {
+    tfaSetup.value = await api.post('/auth/2fa/setup')
+    tfaStage.value = 'setup'
+  }
+  catch {
+    toast.error('Não foi possível iniciar a configuração.')
+  }
+  finally {
+    tfaBusy.value = false
+  }
+}
+
+async function confirmarTfa() {
+  tfaError.value = ''
+  tfaBusy.value = true
+  try {
+    const res = await api.post<{ backupCodes: string[] }>('/auth/2fa/enable', { code: tfaCode.value })
+    backupCodes.value = res.backupCodes
+    backupCodesAck.value = false
+    tfaStage.value = 'codes'
+    tfaCode.value = ''
+    tfaSetup.value = null
+    await Promise.all([refreshTfa(), refreshSessions()])
+    toast.success('Verificação em duas etapas ativada.')
+  }
+  catch (e) {
+    tfaError.value = (e as { message?: string }).message || 'Código inválido.'
+  }
+  finally {
+    tfaBusy.value = false
+  }
+}
+
+const disableForm = ref({ password: '', code: '' })
+const showDisable = ref(false)
+
+async function desativarTfa() {
+  tfaError.value = ''
+  tfaBusy.value = true
+  try {
+    await api.post('/auth/2fa/disable', {
+      password: disableForm.value.password || undefined,
+      code: disableForm.value.code || undefined,
+    })
+    toast.success('Verificação em duas etapas desativada.')
+    showDisable.value = false
+    disableForm.value = { password: '', code: '' }
+    await refreshTfa()
+  }
+  catch (e) {
+    tfaError.value = (e as { message?: string }).message || 'Não foi possível desativar.'
+  }
+  finally {
+    tfaBusy.value = false
+  }
+}
+
+const regenPassword = ref('')
+const showRegen = ref(false)
+async function regenerarCodigos() {
+  tfaError.value = ''
+  tfaBusy.value = true
+  try {
+    const res = await api.post<{ backupCodes: string[] }>('/auth/2fa/backup-codes', {
+      password: regenPassword.value || undefined,
+    })
+    backupCodes.value = res.backupCodes
+    backupCodesAck.value = false
+    tfaStage.value = 'codes'
+    showRegen.value = false
+    regenPassword.value = ''
+    await refreshTfa()
+  }
+  catch (e) {
+    tfaError.value = (e as { message?: string }).message || 'Não foi possível gerar novos códigos.'
+  }
+  finally {
+    tfaBusy.value = false
+  }
+}
+
+function copiarCodigos() {
+  navigator.clipboard?.writeText(backupCodes.value.join('\n'))
+  toast.success('Códigos copiados.')
+}
+
+function baixarCodigos() {
+  // Blob local — os códigos nunca voltam ao servidor nem passam por terceiros.
+  const blob = new Blob(
+    [`Códigos de recuperação — VitrinePro\nConta: ${auth.user?.email}\n\n${backupCodes.value.join('\n')}\n\nCada código funciona uma única vez.\n`],
+    { type: 'text/plain' },
+  )
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'vitrinepro-codigos-recuperacao.txt'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 // ── Dados de acesso — sessões ativas (B26) ──────────────────────────────────
 interface SessionItem {
   id: string
@@ -264,6 +395,154 @@ function fmtData(iso: string) {
             </form>
           </UiCard>
 
+          <!-- B27 — Verificação em duas etapas (2FA/TOTP) -->
+          <UiCard class="conta__card conta__card--wide">
+            <div class="conta__2fa-head">
+              <h2>Verificação em duas etapas</h2>
+              <UiBadge v-if="tfa?.enabled" variant="success">Ativa</UiBadge>
+              <UiBadge v-else-if="tfa?.enforced" variant="danger">Obrigatória</UiBadge>
+              <UiBadge v-else variant="neutral">Inativa</UiBadge>
+            </div>
+
+            <p v-if="tfa?.enforced && !tfa?.enabled" class="conta__2fa-alert">
+              Sua conta é administradora. A verificação em duas etapas é obrigatória —
+              ative agora para proteger as ações de aprovação, disputas e repasses.
+            </p>
+            <p class="conta__hint">
+              Um código de 6 dígitos do seu celular, além da senha. Gratuito em todos os planos.
+            </p>
+
+            <!-- Estado: ativa -->
+            <template v-if="tfa?.enabled && tfaStage !== 'codes'">
+              <p class="conta__2fa-meta">
+                Ativada em {{ fmtDataHora(tfa.enabledAt) }} ·
+                {{ tfa.backupCodesRemaining }} códigos de recuperação restantes
+              </p>
+              <p v-if="tfa.backupCodesRemaining <= 2" class="conta__2fa-alert">
+                Você está com poucos códigos de recuperação. Gere um conjunto novo.
+              </p>
+
+              <!-- Os dois formulários compartilham `tfaError`; limpar ao alternar
+                   evita que um erro de "regenerar" apareça no de "desativar". -->
+              <div class="conta__2fa-actions">
+                <UiButton
+                  size="sm" variant="secondary"
+                  @click="showRegen = !showRegen; showDisable = false; tfaError = ''"
+                >
+                  Gerar novos códigos
+                </UiButton>
+                <UiButton
+                  size="sm" variant="secondary"
+                  @click="showDisable = !showDisable; showRegen = false; tfaError = ''"
+                >
+                  Desativar
+                </UiButton>
+              </div>
+
+              <form v-if="showRegen" class="conta__2fa-form" @submit.prevent="regenerarCodigos">
+                <p class="conta__hint">Os códigos anteriores deixam de funcionar.</p>
+                <UiInput
+                  v-if="!tfa.isOAuthAccount" v-model="regenPassword"
+                  type="password" label="Sua senha" autocomplete="current-password"
+                />
+                <!-- Sem isto, senha errada falha em silêncio: o handler seta
+                     `tfaError` mas nada o exibia (bug pego na validação E2E). -->
+                <p v-if="tfaError" class="conta__error">{{ tfaError }}</p>
+                <UiButton type="submit" size="sm" :loading="tfaBusy">Confirmar</UiButton>
+              </form>
+
+              <form v-if="showDisable" class="conta__2fa-form" @submit.prevent="desativarTfa">
+                <p class="conta__hint">
+                  Sua conta ficará protegida apenas pela senha.
+                </p>
+                <UiInput
+                  v-if="!tfa.isOAuthAccount" v-model="disableForm.password"
+                  type="password" label="Sua senha" autocomplete="current-password"
+                />
+                <UiInput
+                  v-else v-model="disableForm.code"
+                  label="Código do app" inputmode="numeric" :maxlength="6" placeholder="000000"
+                />
+                <p v-if="tfaError" class="conta__error">{{ tfaError }}</p>
+                <UiButton type="submit" size="sm" variant="danger" :loading="tfaBusy">
+                  Desativar verificação
+                </UiButton>
+              </form>
+            </template>
+
+            <!-- Estado: inativa, sem configuração em curso -->
+            <template v-else-if="!tfa?.enabled && tfaStage === null">
+              <UiButton size="sm" :loading="tfaBusy" @click="iniciarTfa">
+                Ativar verificação em duas etapas
+              </UiButton>
+            </template>
+
+            <!-- Estado: configurando (QR + confirmação) -->
+            <template v-else-if="tfaStage === 'setup' && tfaSetup">
+              <ol class="conta__2fa-steps">
+                <li>
+                  Instale um app autenticador (Google Authenticator, Authy, 1Password…).
+                </li>
+                <li>
+                  <template v-if="tfaSetup.qrDataUrl">
+                    Escaneie o QR code:
+                    <img :src="tfaSetup.qrDataUrl" alt="QR code para configurar o app autenticador" class="conta__2fa-qr">
+                    <details class="conta__2fa-manual">
+                      <summary>Não consegue escanear?</summary>
+                      <p>Digite esta chave no app:</p>
+                      <code class="conta__2fa-secret">{{ tfaSetup.secretFormatted }}</code>
+                    </details>
+                  </template>
+                  <template v-else>
+                    Adicione uma conta manualmente no app e digite esta chave:
+                    <code class="conta__2fa-secret">{{ tfaSetup.secretFormatted }}</code>
+                    <span class="conta__hint">Conta: {{ auth.user?.email }}</span>
+                  </template>
+                </li>
+                <li>Digite o código de 6 dígitos que o app mostrar:</li>
+              </ol>
+
+              <form class="conta__2fa-form" @submit.prevent="confirmarTfa">
+                <UiInput
+                  v-model="tfaCode" label="Código de verificação"
+                  inputmode="numeric" :maxlength="6" placeholder="000000" autofocus
+                />
+                <p v-if="tfaError" class="conta__error">{{ tfaError }}</p>
+                <div class="conta__2fa-actions">
+                  <UiButton type="submit" size="sm" :loading="tfaBusy">Ativar</UiButton>
+                  <UiButton
+                    type="button" size="sm" variant="secondary"
+                    @click="tfaStage = null; tfaSetup = null; tfaCode = ''; tfaError = ''"
+                  >
+                    Cancelar
+                  </UiButton>
+                </div>
+              </form>
+            </template>
+
+            <!-- Estado: mostrando códigos de recuperação (uma única vez) -->
+            <template v-else-if="tfaStage === 'codes'">
+              <p class="conta__2fa-alert">
+                Guarde estes códigos agora. Cada um funciona <strong>uma única vez</strong> e
+                eles <strong>não podem ser vistos de novo</strong> — só substituídos por um conjunto novo.
+              </p>
+              <ul class="conta__2fa-codes">
+                <li v-for="c in backupCodes" :key="c"><code>{{ c }}</code></li>
+              </ul>
+              <div class="conta__2fa-actions">
+                <UiButton size="sm" variant="secondary" @click="copiarCodigos">Copiar</UiButton>
+                <UiButton size="sm" variant="secondary" @click="baixarCodigos">Baixar .txt</UiButton>
+              </div>
+              <label class="conta__2fa-ack">
+                <input v-model="backupCodesAck" type="checkbox">
+                Guardei meus códigos em local seguro
+              </label>
+              <UiButton size="sm" :disabled="!backupCodesAck" @click="tfaStage = null; backupCodes = []">
+                Concluir
+              </UiButton>
+            </template>
+          </UiCard>
+
           <UiCard class="conta__card conta__card--wide">
             <h2>Sessões ativas</h2>
             <p class="conta__hint">Dispositivos onde sua conta está logada atualmente.</p>
@@ -421,9 +700,51 @@ function fmtData(iso: string) {
 .conta__delete { display: flex; flex-direction: column; gap: var(--sp-3); }
 .conta__delete-list { display: flex; flex-direction: column; gap: var(--sp-2); padding-left: var(--sp-5); font-size: var(--text-14); color: var(--ink-700); }
 .conta__delete-confirm-label { font-size: var(--text-14); margin-top: var(--sp-2); }
+/* B27 — verificação em duas etapas */
+.conta__2fa-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.conta__2fa-alert {
+  padding: var(--sp-3); border-radius: var(--radius-input);
+  background: var(--amber-100, #fef3c7); color: var(--amber-900, #78350f);
+  font-size: var(--text-13); line-height: 1.5;
+}
+.conta__2fa-meta { font-size: var(--text-13); color: var(--ink-500); }
+.conta__2fa-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.conta__2fa-form {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding: var(--sp-3); border: 1px solid var(--ink-100); border-radius: var(--radius-md);
+}
+.conta__2fa-steps {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding-left: var(--sp-5); font-size: var(--text-14); color: var(--ink-700);
+}
+.conta__2fa-steps li { display: flex; flex-direction: column; gap: var(--sp-2); align-items: flex-start; }
+.conta__2fa-qr {
+  width: 180px; height: 180px; border-radius: var(--radius-md);
+  border: 1px solid var(--ink-100); background: var(--white); padding: var(--sp-2);
+}
+.conta__2fa-manual { font-size: var(--text-13); }
+.conta__2fa-manual summary { cursor: pointer; color: var(--brand-700); }
+.conta__2fa-secret {
+  display: inline-block; margin-top: var(--sp-1); padding: var(--sp-2) var(--sp-3);
+  background: var(--ink-100); border-radius: var(--radius-input);
+  font-family: monospace; font-size: var(--text-14); letter-spacing: 0.08em;
+  /* Segredo longo não pode estourar o card em telas estreitas. */
+  word-break: break-all; max-width: 100%;
+}
+.conta__2fa-codes {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-2);
+  padding: var(--sp-3); background: var(--ink-100); border-radius: var(--radius-md);
+  list-style: none;
+}
+.conta__2fa-codes code { font-family: monospace; font-size: var(--text-14); letter-spacing: 0.05em; }
+.conta__2fa-ack {
+  display: flex; align-items: center; gap: var(--sp-2);
+  font-size: var(--text-14); cursor: pointer;
+}
 @media (max-width: 640px) {
   .conta__layout { grid-template-columns: 1fr; }
   .conta__nav { flex-direction: row; overflow-x: auto; }
   .conta__session { flex-direction: column; align-items: flex-start; }
+  .conta__2fa-codes { grid-template-columns: 1fr; }
 }
 </style>

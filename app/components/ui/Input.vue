@@ -12,6 +12,13 @@ const props = withDefaults(defineProps<{
   required?: boolean
   disabled?: boolean
   autocomplete?: string
+  // Props explícitas em vez de fallthrough de atributos: o root deste
+  // componente é a `div.field`, então um `inputmode`/`maxlength` passado de
+  // fora pousaria na div e não teria efeito nenhum — silenciosamente.
+  // (B27 precisou dos três no campo de código de verificação.)
+  inputmode?: 'text' | 'numeric' | 'tel'
+  maxlength?: number
+  autofocus?: boolean
 }>(), { type: 'text', modelValue: '' })
 
 const emit = defineEmits<{ 'update:modelValue': [string] }>()
@@ -20,6 +27,11 @@ const inputType = computed(() =>
   props.type === 'password' ? (showPassword.value ? 'text' : 'password') : props.type,
 )
 const id = useId()
+
+// Permite que o pai chame `inputRef.focus()` — `ref` num componente devolve a
+// instância, não o elemento, então sem este expose não há como focar de fora.
+const inputEl = ref<HTMLInputElement | null>(null)
+defineExpose({ focus: () => inputEl.value?.focus() })
 </script>
 
 <template>
@@ -30,6 +42,7 @@ const id = useId()
     <div class="field__wrap">
       <input
         :id="id"
+        ref="inputEl"
         :type="inputType"
         class="field__input"
         :class="{ 'field__input--error': props.error }"
@@ -37,6 +50,9 @@ const id = useId()
         :placeholder="props.placeholder"
         :disabled="props.disabled"
         :autocomplete="props.autocomplete"
+        :inputmode="props.inputmode"
+        :maxlength="props.maxlength"
+        :autofocus="props.autofocus"
         :aria-invalid="!!props.error"
         :aria-describedby="props.error ? `${id}-err` : undefined"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
