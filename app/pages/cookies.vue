@@ -12,12 +12,12 @@ const sections = [
   {
     id: 'tipos',
     heading: '2. Quais cookies usamos',
-    body: 'Essenciais: necessários para o funcionamento básico da plataforma, como manter sua sessão autenticada (cookie de token de acesso) e lembrar preferências de exibição. Não podem ser desativados, pois sem eles partes essenciais do site — como o login — deixam de funcionar. De análise: usados, mediante seu consentimento, para entender de forma agregada como as pessoas navegam pelo site (páginas mais visitadas, tempo de permanência), o que nos ajuda a priorizar melhorias. Ainda não usamos cookies de publicidade/remarketing de terceiros; se isso mudar no futuro, esta política será atualizada e um novo consentimento será solicitado.',
+    body: 'Essenciais: necessários para o funcionamento básico da plataforma, como manter sua sessão autenticada (cookie de token de acesso) e lembrar preferências de exibição. Não podem ser desativados, pois sem eles partes essenciais do site — como o login — deixam de funcionar. De análise: usados, mediante seu consentimento, para entender de forma agregada como as pessoas navegam pelo site (páginas mais visitadas, tempo de permanência), o que nos ajuda a priorizar melhorias. De marketing: usados apenas se você consentir com essa categoria específica, para medir campanhas e personalizar comunicações. As duas categorias são independentes — aceitar análise não ativa marketing. Enquanto você não escolher, e também se recusar, nenhum cookie de análise ou de marketing é gravado: as ferramentas ficam em modo restrito, sem identificar você.',
   },
   {
     id: 'terceiros',
     heading: '3. Cookies de terceiros',
-    body: 'Alguns provedores que usamos para operar a plataforma (como serviços de autenticação social — Google/LinkedIn — quando você opta por entrar com essas contas) podem definir seus próprios cookies, sujeitos às políticas de privacidade desses provedores.',
+    body: 'Alguns provedores que usamos para operar a plataforma podem definir seus próprios cookies, sujeitos às políticas de privacidade deles. São eles: serviços de autenticação social (Google/LinkedIn), quando você opta por entrar com essas contas; e o Google Tag Manager, que gerencia nossas ferramentas de medição. O Google Tag Manager é carregado em todas as visitas, mas utilizamos o Consent Mode do Google: até você escolher — e depois, se recusar — ele opera em modo restrito, sem gravar cookies de análise ou de publicidade e sem identificar você. Sua escolha no banner é transmitida imediatamente a essas ferramentas e pode ser alterada a qualquer momento.',
   },
   {
     id: 'gerenciar',

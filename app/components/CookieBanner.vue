@@ -1,20 +1,47 @@
 <script setup lang="ts">
 // T18 — Banner de cookies (barra inferior + modal Configurar com 3 toggles).
-interface Consent { essential: boolean, analytics: boolean, marketing: boolean }
-const consent = useCookie<Consent | null>('vp_cookie_consent', { maxAge: 60 * 60 * 24 * 365, default: () => null })
+// OPS6 — o estado saiu daqui para `useConsentimento()`: o plugin do GTM precisa
+// reagir NA HORA em que o usuário decide, e dois `useCookie` na mesma chave não
+// se sincronizam (cada chamada devolve um ref novo). Ver o composable.
+import type { ConsentimentoCookies } from '~/composables/useConsentimento'
 
-const show = ref(!consent.value)
+const { estado, decidiu, salvar } = useConsentimento()
+
+const show = ref(!decidiu.value)
 const configOpen = ref(false)
 const analytics = ref(true)
 const marketing = ref(false)
 
-function persist(c: Consent) {
-  consent.value = c
+function persist(c: ConsentimentoCookies) {
+  salvar(c) // grava cookie + estado compartilhado → dispara o watch do GTM
   show.value = false
   configOpen.value = false
 }
 function aceitarTudo() { persist({ essential: true, analytics: true, marketing: true }) }
 function salvarPreferencias() { persist({ essential: true, analytics: analytics.value, marketing: marketing.value }) }
+
+/**
+ * OPS6 — recusar precisa custar o MESMO que aceitar (um clique).
+ *
+ * Antes só havia "Aceitar" e "Configurar": para recusar era preciso abrir o
+ * modal e desmarcar duas caixas — quatro cliques contra um. Isso é o padrão
+ * escuro que a LGPD (art. 8º, §4º — consentimento livre e inequívoco) e o EDPB
+ * tratam como consentimento viciado. Enquanto os toggles não faziam nada era
+ * um detalhe cosmético; com o GTM ligado de verdade, passou a ter efeito real.
+ */
+function recusarTudo() { persist({ essential: true, analytics: false, marketing: false }) }
+
+/**
+ * Permite reabrir as preferências de qualquer lugar (ex.: link na Política de
+ * Cookies) sem duplicar o componente: `window.dispatchEvent(new Event('vp:cookies'))`.
+ */
+onMounted(() => {
+  const abrir = () => { show.value = true; configOpen.value = true
+    analytics.value = estado.value?.analytics ?? true
+    marketing.value = estado.value?.marketing ?? false }
+  window.addEventListener('vp:cookies', abrir)
+  onBeforeUnmount(() => window.removeEventListener('vp:cookies', abrir))
+})
 </script>
 
 <template>
@@ -26,6 +53,8 @@ function salvarPreferencias() { persist({ essential: true, analytics: analytics.
       </p>
       <div class="cookie__actions">
         <UiButton variant="ghost" size="sm" @click="configOpen = true">Configurar</UiButton>
+        <!-- "Recusar" com o mesmo peso visual de "Aceitar": um clique cada. -->
+        <UiButton variant="secondary" size="sm" @click="recusarTudo">Recusar</UiButton>
         <UiButton size="sm" @click="aceitarTudo">Aceitar</UiButton>
       </div>
     </div>

@@ -35,6 +35,21 @@ export default defineNuxtConfig({
       // LinkedIn desativado por enquanto — reativar com NUXT_PUBLIC_LINKEDIN_AUTH_ENABLED=true.
       googleAuthEnabled: process.env.NUXT_PUBLIC_GOOGLE_AUTH_ENABLED !== 'false',
       linkedinAuthEnabled: process.env.NUXT_PUBLIC_LINKEDIN_AUTH_ENABLED === 'true',
+      // OPS6 — Google Tag Manager. Ver `plugins/gtm.client.ts` para a mecânica.
+      //
+      // Controlado **direto aqui, sem variável de ambiente** (decisão do Andres,
+      // 2026-07-18): para mudar qualquer um destes, edite a linha e faça deploy.
+      // Se um dia precisar variar por ambiente, é só voltar a ler de
+      // `process.env` como as chaves de OAuth logo acima.
+      gtmId: 'GTM-TLTNFG8T',
+      /** `false` desliga o GTM por completo (nada é carregado, nem o noscript). */
+      gtmEnabled: true,
+      /**
+       * `false` = contêiner carrega sempre; o Consent Mode v2 é quem sinaliza a
+       * escolha do usuário às tags (nenhum cookie de análise/anúncio antes do
+       * aceite). `true` = modo estrito, contêiner só depois do aceite.
+       */
+      gtmRequireConsent: false,
     },
   },
 
