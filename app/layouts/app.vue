@@ -240,12 +240,33 @@ const isAdminWorkspace = computed(() => route.path.startsWith('/app/admin'))
   display: flex; align-items: center; gap: var(--sp-4); padding-inline: var(--sp-6);
   position: sticky; top: 0; z-index: 40;
 }
-.shell__burger { display: none; background: none; border: none; flex-shrink: 0; }
+/*
+ * F20 — alvo de toque. O ícone tem 22px, então sem padding o botão inteiro era
+ * 22×22 — bem abaixo dos 44×44 recomendados (Apple HIG / WCAG 2.5.5), e este é
+ * o único acesso à navegação no mobile. O padding cresce a área clicável sem
+ * mudar o tamanho do ícone; a margem negativa compensa o deslocamento no layout.
+ */
+.shell__burger {
+  display: none; background: none; border: none; flex-shrink: 0;
+  padding: var(--sp-3); margin: calc(var(--sp-3) * -1);
+  align-items: center; justify-content: center;
+}
 .shell__breadcrumb { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shell__topbar-right { display: flex; align-items: center; gap: var(--sp-3); flex-shrink: 0; }
-.shell__iconbtn { position: relative; background: none; border: none; color: var(--ink-500); display: flex; cursor: pointer; }
+/* Idem `.shell__burger`: ícone de 20px vira alvo de ~44px sem crescer visualmente. */
+.shell__iconbtn {
+  position: relative; background: none; border: none; color: var(--ink-500);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  padding: var(--sp-3); margin: calc(var(--sp-3) * -1);
+}
+/*
+ * Offsets somam o padding do `.shell__iconbtn` (F20): o dot é posicionado contra
+ * a caixa do botão, então sem o `calc` ele se descolaria do sino ao ampliarmos a
+ * área de toque. Mantém o dot na quina do ícone, não na quina do alvo de toque.
+ */
 .shell__notif-dot {
-  position: absolute; top: -4px; right: -6px; min-width: 16px; height: 16px; padding: 0 3px;
+  position: absolute; top: calc(var(--sp-3) - 4px); right: calc(var(--sp-3) - 6px);
+  min-width: 16px; height: 16px; padding: 0 3px;
   border-radius: var(--radius-full); background: var(--red-500); color: var(--white);
   font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
 }

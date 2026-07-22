@@ -1,5 +1,7 @@
 <script setup lang="ts">
 // T-H02 — Início "Minha mesa" do hunter. Slots reais (/vagas/me/usage); KPIs reais (B12, GET /stats/hunter).
+import type { PaginatedResult, Vaga } from '~/types/vaga'
+
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useHunterWorkspace()
 useSeoMeta({ title: 'Início — Hunter' })
@@ -38,10 +40,44 @@ const kpis = computed(() => [
   { label: 'Indicações aguardando', value: String(stats.value?.indicacoesAguardandoResposta ?? 0) },
 ])
 
-const mesa = [
-  { texto: 'Crie sua primeira vaga para começar a receber candidatos.', cta: 'Nova vaga', to: '/app/hunter/vagas/nova' },
-  { texto: 'Organize seus candidatos no pipeline de cada vaga.', cta: 'Ver minhas vagas', to: '/app/hunter/vagas' },
-]
+// F20 — "Minha mesa" era um array fixo, então dizia "Crie sua primeira vaga" até
+// pra hunter com vagas publicadas e placements em andamento. Agora deriva do
+// estado real: só sugere criar a primeira vaga quem de fato não tem nenhuma, e
+// destaca o que está esperando ação. `limit: 1` porque só interessa o `total`.
+const { data: vagasResp } = await useAsyncData('hunter-mesa-vagas', () =>
+  api.get<PaginatedResult<Vaga>>('/vagas/me', { limit: 1 }).catch(() => null))
+const temVagas = computed(() => (vagasResp.value?.total ?? 0) > 0)
+
+const mesa = computed(() => {
+  const itens: { texto: string, cta: string, to: string }[] = []
+  if (!temVagas.value) {
+    itens.push({ texto: 'Crie sua primeira vaga para começar a receber candidatos.', cta: 'Nova vaga', to: '/app/hunter/vagas/nova' })
+  }
+  const aguardando = stats.value?.indicacoesAguardandoResposta ?? 0
+  if (aguardando > 0) {
+    itens.push({
+      texto: aguardando === 1
+        ? '1 indicação sua aguarda resposta da empresa.'
+        : `${aguardando} indicações suas aguardam resposta da empresa.`,
+      cta: 'Ver candidatos',
+      to: '/app/hunter/candidatos',
+    })
+  }
+  const emAndamento = stats.value?.placementsEmAndamento ?? 0
+  if (emAndamento > 0) {
+    itens.push({
+      texto: emAndamento === 1
+        ? '1 placement em andamento — confirme para liberar a garantia.'
+        : `${emAndamento} placements em andamento — confirme para liberar a garantia.`,
+      cta: 'Ver ganhos',
+      to: '/app/hunter/ganhos',
+    })
+  }
+  if (temVagas.value) {
+    itens.push({ texto: 'Organize seus candidatos no pipeline de cada vaga.', cta: 'Ver minhas vagas', to: '/app/hunter/vagas' })
+  }
+  return itens
+})
 </script>
 
 <template>

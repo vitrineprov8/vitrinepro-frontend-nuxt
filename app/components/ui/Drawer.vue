@@ -13,20 +13,23 @@ onKeyStroke('Escape', () => { if (props.open) emit('close') })
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="drawer">
-      <div v-if="props.open" class="drawer-overlay" @click.self="emit('close')">
-        <aside class="drawer" :class="`drawer--${props.size}`" role="dialog" aria-modal="true" :aria-label="props.title">
-          <header class="drawer__header">
-            <slot name="header"><h4>{{ props.title }}</h4></slot>
-            <button class="drawer__close" aria-label="Fechar" @click="emit('close')"><X :size="20" /></button>
-          </header>
-          <div class="drawer__body"><slot /></div>
-          <footer v-if="$slots.footer" class="drawer__footer"><slot name="footer" /></footer>
-        </aside>
-      </div>
-    </Transition>
-  </Teleport>
+  <!-- ClientOnly: evita o mismatch de hidratação do Teleport (ver `ui/Toaster.vue`). -->
+  <ClientOnly>
+    <Teleport to="body">
+      <Transition name="drawer">
+        <div v-if="props.open" class="drawer-overlay" @click.self="emit('close')">
+          <aside class="drawer" :class="`drawer--${props.size}`" role="dialog" aria-modal="true" :aria-label="props.title">
+            <header class="drawer__header">
+              <slot name="header"><h4>{{ props.title }}</h4></slot>
+              <button class="drawer__close" aria-label="Fechar" @click="emit('close')"><X :size="20" /></button>
+            </header>
+            <div class="drawer__body"><slot /></div>
+            <footer v-if="$slots.footer" class="drawer__footer"><slot name="footer" /></footer>
+          </aside>
+        </div>
+      </Transition>
+    </Teleport>
+  </ClientOnly>
 </template>
 
 <style scoped>

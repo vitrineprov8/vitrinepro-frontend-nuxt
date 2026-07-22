@@ -3,6 +3,8 @@
 // construção" (F2/B12); agora usa o shell real (useEmpresaWorkspace) e o
 // mesmo padrão "Minha mesa" do hunter (app/hunter/index.vue), com links reais
 // para as telas novas (T-E03..E09) em vez de CTAs para /precos.
+import type { PaginatedResult, Vaga } from '~/types/vaga'
+
 definePageMeta({ layout: 'app', middleware: 'auth' })
 useEmpresaWorkspace()
 useSeoMeta({ title: 'Início — Empresa' })
@@ -26,11 +28,31 @@ const kpis = computed(() => [
   { label: 'Contratações no ano', value: String(stats.value?.contratacoesNoAno ?? 0) },
 ])
 
-const mesa = [
-  { texto: 'Crie sua primeira vaga para começar a receber candidatos.', cta: 'Nova vaga', to: '/app/empresa/vagas/nova' },
-  { texto: 'Organize seus candidatos no pipeline de cada vaga.', cta: 'Ver minhas vagas', to: '/app/empresa/vagas' },
-  { texto: 'Veja hunters trabalhando suas vagas e avalie os que já entregaram.', cta: 'Ver hunters', to: '/app/empresa/hunters' },
-]
+// F20 — mesma correção de `app/hunter/index.vue`: o array era fixo e dizia "Crie
+// sua primeira vaga" mesmo com o KPI "Vagas abertas" ao lado mostrando 4.
+const { data: vagasResp } = await useAsyncData('empresa-mesa-vagas', () =>
+  api.get<PaginatedResult<Vaga>>('/vagas/me', { limit: 1 }).catch(() => null))
+const temVagas = computed(() => (vagasResp.value?.total ?? 0) > 0)
+
+const mesa = computed(() => {
+  const itens: { texto: string, cta: string, to: string }[] = []
+  if (!temVagas.value) {
+    itens.push({ texto: 'Crie sua primeira vaga para começar a receber candidatos.', cta: 'Nova vaga', to: '/app/empresa/vagas/nova' })
+  }
+  const novos = stats.value?.candidatosNovos7d ?? 0
+  if (novos > 0) {
+    itens.push({
+      texto: novos === 1 ? '1 candidato novo nos últimos 7 dias.' : `${novos} candidatos novos nos últimos 7 dias.`,
+      cta: 'Ver candidatos',
+      to: '/app/empresa/candidatos',
+    })
+  }
+  if (temVagas.value) {
+    itens.push({ texto: 'Organize seus candidatos no pipeline de cada vaga.', cta: 'Ver minhas vagas', to: '/app/empresa/vagas' })
+  }
+  itens.push({ texto: 'Veja hunters trabalhando suas vagas e avalie os que já entregaram.', cta: 'Ver hunters', to: '/app/empresa/hunters' })
+  return itens
+})
 </script>
 
 <template>

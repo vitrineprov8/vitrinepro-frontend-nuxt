@@ -7,13 +7,18 @@ import { VAGA_TYPE_LABEL, VAGA_WORK_MODE_LABEL, VAGA_SEGMENT_LABEL } from '~/typ
 const props = defineProps<{ vaga: Vaga }>()
 
 // B4 — pill de fee, mostrado quando a vaga aceita hunters e tem fee definido.
+// Atenção: `feeAmount`/`feePercent` chegam como string decimal ("0.00") e um zero
+// NÃO é "fee definido" — checar só `!= null` fazia `feeAmount:"0.00"` curto-circuitar
+// antes do percentual e renderizar "R$ 0" numa vaga que tem feePercent válido.
+// Precedência igual à de `MarkHiredModal.vue` (percentual primeiro), que é a que
+// vale no cálculo real do fee no servidor.
 const feeLabel = computed(() => {
-  const pct = props.vaga.feePercent != null ? Number(props.vaga.feePercent) : null
-  const amt = props.vaga.feeAmount != null ? Number(props.vaga.feeAmount) : null
+  const pct = Number(props.vaga.feePercent) || null
+  const amt = Number(props.vaga.feeAmount) || null
+  if (pct != null) return `${pct}% fee`
   if (amt != null) {
     return amt.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
   }
-  if (pct != null) return `${pct}% fee`
   return null
 })
 

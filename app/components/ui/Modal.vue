@@ -21,20 +21,23 @@ onKeyStroke('Escape', () => { if (props.open) requestClose() })
 </script>
 
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div v-if="props.open" class="modal-overlay" @click.self="requestClose">
-        <div class="modal" :class="`modal--${props.size}`" role="dialog" aria-modal="true" :aria-label="props.title">
-          <header v-if="props.title || $slots.header" class="modal__header">
-            <slot name="header"><h4>{{ props.title }}</h4></slot>
-            <button class="modal__close" aria-label="Fechar" @click="requestClose"><X :size="20" /></button>
-          </header>
-          <div class="modal__body"><slot /></div>
-          <footer v-if="$slots.footer" class="modal__footer"><slot name="footer" /></footer>
+  <!-- ClientOnly: evita o mismatch de hidratação do Teleport (ver `ui/Toaster.vue`). -->
+  <ClientOnly>
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="props.open" class="modal-overlay" @click.self="requestClose">
+          <div class="modal" :class="`modal--${props.size}`" role="dialog" aria-modal="true" :aria-label="props.title">
+            <header v-if="props.title || $slots.header" class="modal__header">
+              <slot name="header"><h4>{{ props.title }}</h4></slot>
+              <button class="modal__close" aria-label="Fechar" @click="requestClose"><X :size="20" /></button>
+            </header>
+            <div class="modal__body"><slot /></div>
+            <footer v-if="$slots.footer" class="modal__footer"><slot name="footer" /></footer>
+          </div>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </Transition>
+    </Teleport>
+  </ClientOnly>
 </template>
 
 <style scoped>

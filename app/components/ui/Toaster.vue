@@ -5,20 +5,25 @@ const icons = { success: CheckCircle2, error: XCircle, info: Info, warning: Aler
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="toaster" aria-live="polite">
-      <TransitionGroup name="toast">
-        <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast--${t.type}`">
-          <component :is="icons[t.type]" :size="18" class="toast__icon" />
-          <span class="toast__msg">{{ t.message }}</span>
-          <button v-if="t.actionLabel" class="toast__action" @click="t.onAction?.(); dismiss(t.id)">
-            {{ t.actionLabel }}
-          </button>
-          <button class="toast__close" aria-label="Fechar" @click="dismiss(t.id)"><X :size="14" /></button>
-        </div>
-      </TransitionGroup>
-    </div>
-  </Teleport>
+  <!-- ClientOnly: `Teleport` no SSR emite um comentário-âncora onde o componente
+       está e move o conteúdo pro <body>, mas na hidratação o cliente espera a div
+       — mismatch garantido em toda página pública. Overlay não tem valor de SEO. -->
+  <ClientOnly>
+    <Teleport to="body">
+      <div class="toaster" aria-live="polite">
+        <TransitionGroup name="toast">
+          <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast--${t.type}`">
+            <component :is="icons[t.type]" :size="18" class="toast__icon" />
+            <span class="toast__msg">{{ t.message }}</span>
+            <button v-if="t.actionLabel" class="toast__action" @click="t.onAction?.(); dismiss(t.id)">
+              {{ t.actionLabel }}
+            </button>
+            <button class="toast__close" aria-label="Fechar" @click="dismiss(t.id)"><X :size="14" /></button>
+          </div>
+        </TransitionGroup>
+      </div>
+    </Teleport>
+  </ClientOnly>
 </template>
 
 <style scoped>

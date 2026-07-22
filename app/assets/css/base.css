@@ -24,6 +24,23 @@ img { max-width: 100%; display: block; }
 button { font-family: inherit; cursor: pointer; }
 input, select, textarea { font-family: inherit; font-size: var(--text-14); }
 
+/*
+ * O Safari iOS aplica zoom na viewport ao focar um campo com `font-size` < 16px,
+ * e não desfaz o zoom ao sair do campo — o usuário fica com a página deslocada.
+ * 16px no mobile é o único jeito de desligar esse comportamento (não existe
+ * opção de meta viewport que o evite sem também bloquear o pinch-to-zoom, que
+ * é requisito de acessibilidade). Acima do breakpoint segue o 14px do design.
+ *
+ * `!important` é proposital: sem ele, QUALQUER regra de componente com seletor de
+ * classe (`.editor__textarea`, `.field__input--currency`, os `textarea` dos modais)
+ * vence por especificidade e o campo volta a 14px — foi o que aconteceu na 1ª
+ * tentativa deste fix, com 5 de 9 campos do editor de vaga ainda zoomando. Como
+ * nenhum controle do app passa de 16px (conferido), aqui isso só sobe, nunca desce.
+ */
+@media (max-width: 768px) {
+  input, select, textarea { font-size: var(--text-16) !important; }
+}
+
 :focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
 
 /* Números tabulares para KPIs e dinheiro */

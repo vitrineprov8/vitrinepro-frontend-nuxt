@@ -133,10 +133,13 @@ const hunterTermsAccepted = ref(false)
 const hunterSubmitting = ref(false)
 const hunterInterestStatus = ref<'PENDING' | 'ACCEPTED' | 'REJECTED' | null>(null)
 
-function feeLabel(v: Vaga | null) {
+// Zero não é "fee definido" — ver a nota em `VagaCard.vue`. Sem o `|| null`,
+// uma vaga com `feeAmount:"0.00"` + `feePercent:"80.00"` exibia o contraditório
+// "R$ 0 (80% do salário)".
+function feeLabel(v: Vaga | null | undefined) {
   if (!v) return null
-  const pct = v.feePercent != null ? Number(v.feePercent) : null
-  const amt = v.feeAmount != null ? Number(v.feeAmount) : null
+  const pct = Number(v.feePercent) || null
+  const amt = Number(v.feeAmount) || null
   if (amt != null && pct != null) return `${moeda(amt)} (${pct}% do salário)`
   if (amt != null) return moeda(amt)
   if (pct != null) return `${pct}% do salário`

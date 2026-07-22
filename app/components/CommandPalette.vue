@@ -180,41 +180,44 @@ function onEnter() {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div v-if="open" class="cmdk-overlay" @click.self="open = false">
-      <div class="cmdk" role="dialog" aria-modal="true" aria-label="Busca global">
-        <div class="cmdk__input-wrap">
-          <Search :size="18" class="cmdk__icon" />
-          <input
-            ref="inputRef" v-model="query" class="cmdk__input"
-            placeholder="Buscar vagas, ações rápidas..."
-            @keydown.down.prevent="onArrow(1)"
-            @keydown.up.prevent="onArrow(-1)"
-            @keydown.enter.prevent="onEnter"
-          >
-          <kbd class="cmdk__esc">ESC</kbd>
-        </div>
-        <div class="cmdk__body">
-          <p v-if="searching" class="cmdk__hint">Buscando...</p>
-          <template v-if="groupedResults.length">
-            <div v-for="[group, items] in groupedResults" :key="group" class="cmdk__group">
-              <p class="cmdk__group-label">{{ group }}</p>
-              <button
-                v-for="item in items" :key="item.key" class="cmdk__item"
-                :class="{ 'cmdk__item--active': results.indexOf(item) === activeIndex }"
-                @click="select(item)" @mouseenter="activeIndex = results.indexOf(item)"
-              >
-                <span class="cmdk__item-label">{{ item.label }}</span>
-                <span v-if="item.sublabel" class="cmdk__item-sub">{{ item.sublabel }}</span>
-                <ArrowRight :size="14" class="cmdk__item-arrow" />
-              </button>
-            </div>
-          </template>
-          <p v-else-if="!searching" class="cmdk__hint">Nenhum resultado para "{{ query }}".</p>
+  <!-- ClientOnly: evita o mismatch de hidratação do Teleport (ver `ui/Toaster.vue`). -->
+  <ClientOnly>
+    <Teleport to="body">
+      <div v-if="open" class="cmdk-overlay" @click.self="open = false">
+        <div class="cmdk" role="dialog" aria-modal="true" aria-label="Busca global">
+          <div class="cmdk__input-wrap">
+            <Search :size="18" class="cmdk__icon" />
+            <input
+              ref="inputRef" v-model="query" class="cmdk__input"
+              placeholder="Buscar vagas, ações rápidas..."
+              @keydown.down.prevent="onArrow(1)"
+              @keydown.up.prevent="onArrow(-1)"
+              @keydown.enter.prevent="onEnter"
+            >
+            <kbd class="cmdk__esc">ESC</kbd>
+          </div>
+          <div class="cmdk__body">
+            <p v-if="searching" class="cmdk__hint">Buscando...</p>
+            <template v-if="groupedResults.length">
+              <div v-for="[group, items] in groupedResults" :key="group" class="cmdk__group">
+                <p class="cmdk__group-label">{{ group }}</p>
+                <button
+                  v-for="item in items" :key="item.key" class="cmdk__item"
+                  :class="{ 'cmdk__item--active': results.indexOf(item) === activeIndex }"
+                  @click="select(item)" @mouseenter="activeIndex = results.indexOf(item)"
+                >
+                  <span class="cmdk__item-label">{{ item.label }}</span>
+                  <span v-if="item.sublabel" class="cmdk__item-sub">{{ item.sublabel }}</span>
+                  <ArrowRight :size="14" class="cmdk__item-arrow" />
+                </button>
+              </div>
+            </template>
+            <p v-else-if="!searching" class="cmdk__hint">Nenhum resultado para "{{ query }}".</p>
+          </div>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Teleport>
+  </ClientOnly>
 </template>
 
 <style scoped>

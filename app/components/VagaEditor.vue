@@ -429,4 +429,17 @@ function irPipeline() {
   .editor__grid { grid-template-columns: 1fr; }
   .editor__footer { left: 0; }
 }
+/*
+ * F20 — abaixo de ~432px o footer não cabe numa linha só: 48px de padding +
+ * ~106px do texto de autosave + 298px dos dois botões = ~452px. Como o footer é
+ * `position:fixed`, o excedente NÃO vira scroll: "Publicar vaga" (a ação primária)
+ * simplesmente ficava cortada fora da tela. Some com o texto de autosave (o estado
+ * de salvamento já aparece no toast) e deixa os botões dividirem a linha.
+ */
+@media (max-width: 560px) {
+  .editor__footer { padding: var(--sp-3) var(--sp-4); gap: var(--sp-2); }
+  .editor__autosave { display: none; }
+  .editor__footer-actions { flex: 1; gap: var(--sp-2); }
+  .editor__footer-actions > * { flex: 1; min-width: 0; }
+}
 </style>
