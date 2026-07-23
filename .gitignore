@@ -8,3 +8,10 @@ dist
 *.log
 .vercel
 .git_broken
+
+# Playwright E2E
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
