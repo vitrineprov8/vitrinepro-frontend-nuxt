@@ -41,8 +41,11 @@ const memberOptions = computed(() => [
   ...(members.value ?? []).filter(m => m.userId).map(m => ({ value: m.userId as string, label: `${m.user?.firstName ?? ''} ${m.user?.lastName ?? ''}`.trim() || 'Membro' })),
 ])
 
+// `limit: 100` é o teto do backend (o DTO rejeita >100 com 400). Antes pedia 200,
+// então a request falhava sempre e o `.catch` engolia — o dropdown de filtro por
+// vaga ficava permanentemente só com "Todas as vagas" para toda a consultoria.
 const { data: vagasResp } = await useAsyncData('consultoria-pipeline-geral-vagas', () =>
-  api.get<PaginatedResult<Vaga>>('/vagas/me', { limit: 200 }).catch(() => null))
+  api.get<PaginatedResult<Vaga>>('/vagas/me', { limit: 100 }).catch(() => null))
 const vagaOptions = computed(() => [
   { value: '', label: 'Todas as vagas' },
   ...(vagasResp.value?.data ?? []).map(v => ({ value: v.id, label: v.title })),
